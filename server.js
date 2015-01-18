@@ -293,7 +293,16 @@ Server.prototype = new function () {
 
   function handle(request, response, next) {
     var requestURIs = this._requestURIs || requestURIs; // Hack, see above.
-
+    var url = require('url');
+    try{
+      url = url.parse(request.url, true);
+    }catch(e){
+      response.writeHead(500, {
+        'content-type': 'text/plain; charset=utf-8'
+      });
+      response.write("500: Malformed URL");
+      response.end();
+    }
     var url = require('url').parse(request.url, true);
     var path = normalizePath(url.pathname);
 

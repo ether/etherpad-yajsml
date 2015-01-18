@@ -1,16 +1,16 @@
 {
-  "name": "yajsml"
-, "description": "Yet another (Common)JS module loader."
+  "name": "etherpad-yajsml"
+, "description": "Yet another (Common)JS module loader Etherpad edition."
 , "keywords": ["commonjs", "require", "loader"]
 , "author": {
-		"name": "Chad Weider"
-	, "email": "cweider@oofn.net"
-	, "url": "http://oofn.net"
+    "name": "Chad Weider",
+    "email": "cweider@oofn.net",
+    "url": "http://oofn.net"
   }
 , "dependencies": {}
-, "version": "1.1.6"
+, "version": "0.0.1"
 , "repository": {
     "type": "git"
-	, "url": "git://github.com/cweider/yajsml"
+    , "url": "git://github.com/etherpad/yajsml"
   }
 }
