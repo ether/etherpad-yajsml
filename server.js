@@ -297,10 +297,10 @@ Server.prototype = new function () {
     try{
       url = url.parse(request.url, true);
     }catch(e){
-      response.writeHead(500, {
+      response.writeHead(422, {
         'content-type': 'text/plain; charset=utf-8'
       });
-      response.write("500: Malformed URL");
+      response.write("422: Malformed URL");
       response.end();
     }
     var url = require('url').parse(request.url, true);
