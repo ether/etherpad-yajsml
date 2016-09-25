@@ -336,13 +336,18 @@ Server.prototype = new function () {
         response.end();
       }
     } else if (request.method != 'HEAD' && request.method != 'GET') {
-      // I don't know how to do this.
-      response.writeHead(405, {
-        'allow': 'HEAD, GET'
-      , 'content-type': 'text/plain; charset=utf-8'
-      });
-      response.write("405: Only the HEAD or GET methods are allowed.");
-      response.end();
+      if (next) {
+        // procesd to the next handler in chain if we don't know how to handle it
+        next();
+      } else {
+        // I don't know how to do this.
+        response.writeHead(405, {
+          'allow': 'HEAD, GET'
+        , 'content-type': 'text/plain; charset=utf-8'
+        });
+        response.write("405: Only the HEAD or GET methods are allowed.");
+        response.end();
+      }
     } else if (!('callback' in url.query)) {
       // I respond with a straight-forward proxy.
       var resourceURI = this._resourceURIForModulePath(modulePath);
