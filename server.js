@@ -192,7 +192,7 @@ function mergeHeaders(h_1, h_2, h_n) {
 
 function packagedDefine(JSONPCallback, moduleMap) {
   var onFirstEntry = true;
-  content = JSONPCallback + '({\n';
+  content = JSONPCallback + '({';
   for (path in moduleMap) {
     if (hasOwnProperty(moduleMap, path)) {
       content += onFirstEntry ? '  ' : ', ';
@@ -200,7 +200,7 @@ function packagedDefine(JSONPCallback, moduleMap) {
       if (moduleMap[path] === null) {
         content += 'null\n';
       } else {
-        content += 'function (require, exports, module) {\n'
+        content += 'function (require, exports, module) {'
           + moduleMap[path] + '\n'
           + '}\n'
           ;
