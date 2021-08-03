@@ -1,7 +1,7 @@
 {
   "name": "etherpad-yajsml"
-, "description": "Yet another (Common)JS module loader Etherpad edition."
-, "keywords": ["commonjs", "require", "loader"]
+, "description": "Yet another (Common)JS module loader, Etherpad edition."
+, "keywords": ["commonjs", "etherpad", "require", "loader"]
 , "author": {
     "name": "Chad Weider",
     "email": "cweider@oofn.net",
