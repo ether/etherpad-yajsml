@@ -184,6 +184,9 @@ function packagedDefine(JSONPCallback, moduleMap) {
       if (moduleMap[path] === null) {
         content += 'null';
       } else {
+        // Note: This is a regular function, not an arrow function, so that the require kernel can
+        // set the context (`this` inside the module) to `module.exports` to match Node.js's
+        // behavior.
         content += `function (require, exports, module) {${moduleMap[path]}}`;
       }
       content += ',\n';
