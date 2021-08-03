@@ -11,6 +11,6 @@
 , "version": "0.0.4"
 , "repository": {
     "type": "git"
-    , "url": "git://github.com/ether/yajsml"
+    , "url": "git://github.com/ether/etherpad-yajsml"
   }
 }
