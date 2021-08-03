@@ -191,18 +191,16 @@ function mergeHeaders(h_1, h_2, h_n) {
 }
 
 function packagedDefine(JSONPCallback, moduleMap) {
-  var onFirstEntry = true;
   content = JSONPCallback + '({';
   for (path in moduleMap) {
     if (hasOwnProperty(moduleMap, path)) {
-      content += onFirstEntry ? '  ' : ', ';
       content += toJSLiteral(path, './-_') + ': ';
       if (moduleMap[path] === null) {
-        content += 'null\n';
+        content += 'null';
       } else {
-        content += `function (require, exports, module) {${moduleMap[path]}}\n`;
+        content += `function (require, exports, module) {${moduleMap[path]}}`;
       }
-      onFirstEntry = false;
+      content += ',\n';
     }
   }
   content += '});\n';
