@@ -124,14 +124,34 @@ const mergeHeaders = (...headersList) => {
 const packagedDefine = (JSONPCallback, moduleMap) => {
   let content = `${JSONPCallback}({`;
   for (const [path, body] of Object.entries(moduleMap)) {
-    content += `"${escapeNonAlphanumerics(path, './-_')}": `;
+    const pathEsc = escapeNonAlphanumerics(path, './-_');
+    content += `"${pathEsc}": `;
     if (body === null) { // eslint-disable-line eqeqeq
       content += 'null';
     } else {
+      // Improve the readability of stack traces by naming the function that defines the module
+      // "(module the/module/path.js)". This is accomplished by taking advantage of an ES6
+      // feature: When an anonymous function expression is assigned to a variable or an object
+      // property, the function's `.name` property is set to the variable name or object property
+      // name. For example, the following expression would evaluate to a no-op function whose name
+      // is the value of the variable `x`:
+      //     {[x]: () => {}}[x]
+      //
+      // If we did nothing special and simply appended the module definition function expression
+      // to `content`, the function would have a name that equals the value of `path` because the
+      // function is assigned to an object property whose name is the value of `path`. That's
+      // mostly good enough, with one limitation: When displaying a stack trace in the developer
+      // console, Firefox (as of v90) does some mysterious processing that sometimes chops off the
+      // first part of the function's `.name` property. The logic seems arbitrary -- it's not
+      // simply keeping "good" characters. For example, "foo bar.js" is printed in its entirety,
+      // but "foobar.js" becomes "js". Introducing a space seems to cause Firefox to reliably
+      // print the entire name. (The `Error.stack` property does not suffer from this problem --
+      // the complete name is always included.)
+      const nl = `"(module ${pathEsc})"`; // Name literal.
       // Note: This is a regular function, not an arrow function, so that the require kernel can
       // set the context (`this` inside the module) to `module.exports` to match Node.js's
       // behavior.
-      content += `function (require, exports, module) {${body}}`;
+      content += `{${nl}: function (require, exports, module) {${body}}}[${nl}]`;
     }
     content += ',\n';
   }
