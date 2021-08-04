@@ -1,4 +1,4 @@
-/*!
+/* !
 
   Copyright (c) 2011 Chad Weider
 
@@ -22,37 +22,37 @@
 
 */
 
-var Uglify = require('uglify-js');
+const Uglify = require('uglify-js');
 
 function UglifyMiddleware() {
 }
 UglifyMiddleware.prototype = new function () {
   function handle(req, res, next) {
-    var old_res = {};
+    const old_res = {};
     old_res.writeHead = res.writeHead;
 
-    var console = this._console;
+    const console = this._console;
 
     res.writeHead = function (status, headers) {
-      if (headers
-          && headers['content-type']
-          && headers['content-type'].indexOf('application/javascript;') == 0
-          && req.cookies && req.cookies['js-compress-override'] != 'bypass'
-          ) {
-        var buffer = '';
+      if (headers &&
+          headers['content-type'] &&
+          headers['content-type'].indexOf('application/javascript;') == 0 &&
+          req.cookies && req.cookies['js-compress-override'] != 'bypass'
+      ) {
+        let buffer = '';
         old_res.write = res.write;
         old_res.end = res.end;
-        res.write = function(data, encoding) {
+        res.write = function (data, encoding) {
           buffer += data.toString(encoding);
         };
-        res.end = function(data, encoding) {
+        res.end = function (data, encoding) {
           if (data) {
             res.write(data, encoding);
           }
 
-          var content = undefined;
+          let content = undefined;
           try {
-            var ast = Uglify.parser.parse(buffer);
+            let ast = Uglify.parser.parse(buffer);
             ast = Uglify.uglify.ast_mangle(ast);
             ast = Uglify.uglify.ast_squeeze(ast);
             content = Uglify.uglify.gen_code(ast);
@@ -74,7 +74,7 @@ UglifyMiddleware.prototype = new function () {
     };
 
     next(undefined, req, res);
-  };
+  }
 
   this.handle = handle;
 }();

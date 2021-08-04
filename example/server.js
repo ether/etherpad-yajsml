@@ -1,5 +1,4 @@
-#! /usr/bin/node
-/*!
+/* !
 
   Copyright (c) 2011 Chad Weider
 
@@ -23,26 +22,26 @@
 
 */
 
-var fs = require('fs');
-var connect = require('connect');
-var cors = require('connect-cors');
-var request = require('request');
+const fs = require('fs');
+const connect = require('connect');
+const cors = require('connect-cors');
+const request = require('request');
 
 // This needs to be a package.
-var UglifyMiddleware = require('./uglify-middleware');
-var compressor = new UglifyMiddleware();
+const UglifyMiddleware = require('./uglify-middleware');
+const compressor = new UglifyMiddleware();
 compressor._console = console;
 
-var Yajsml = require('etherpad-yajsml');
-var Server = Yajsml.Server;
-var associators = Yajsml.associators;
+const Yajsml = require('etherpad-yajsml');
+const Server = Yajsml.Server;
+const associators = Yajsml.associators;
 
-var configuration;
-for (var i = 1, ii = process.argv.length; i < ii; i++) {
+let configuration;
+for (let i = 1, ii = process.argv.length; i < ii; i++) {
   if (process.argv[i] == '--configuration') {
-    var configPath = process.argv[i+1];
+    const configPath = process.argv[i + 1];
     if (!configPath) {
-      throw new Error("Configuration option specified, but no path given.");
+      throw new Error('Configuration option specified, but no path given.');
     } else {
       configuration = JSON.parse(fs.readFileSync(configPath));
     }
@@ -50,39 +49,35 @@ for (var i = 1, ii = process.argv.length; i < ii; i++) {
 }
 
 if (!configuration) {
-  throw new Error("No configuration option given.");
+  throw new Error('No configuration option given.');
 }
 
-var assetServer = connect.createServer()
-  .use(cors({
-      origins: ['*']
-    , methods: ['HEAD', 'GET']
-    , headers: [
-        'content-type'
-      , 'accept'
-      , 'date'
-      , 'if-modified-since'
-      , 'last-modified'
-      , 'expires'
-      , 'etag'
-      , 'cache-control'
-      ]
+const assetServer = connect.createServer()
+    .use(cors({
+      origins: ['*'],
+      methods: ['HEAD', 'GET'],
+      headers: [
+        'content-type',
+        'accept',
+        'date',
+        'if-modified-since',
+        'last-modified',
+        'expires',
+        'etag',
+        'cache-control',
+      ],
     }))
-  .use(connect.cookieParser())
-  ;
-
-if (configuration['minify']) {
+    .use(connect.cookieParser());
+if (configuration.minify) {
   assetServer.use(compressor);
 }
 
 function interpolatePath(path, values) {
-  return path && path.replace(/(\/)?:(\w+)/, function (_, slash, key) {
-    return (slash ? '/' : '') + encodeURIComponent(String((values || {})[key]));
-  });
+  return path && path.replace(/(\/)?:(\w+)/, (_, slash, key) => (slash ? '/' : '') + encodeURIComponent(String((values || {})[key])));
 }
 
 function interpolateURL(url, values) {
-  var parsed = require('url').parse(url);
+  const parsed = require('url').parse(url);
   if (parsed) {
     parsed.pathname = interpolatePath(parsed.pathname, values);
   }
@@ -90,31 +85,31 @@ function interpolateURL(url, values) {
 }
 
 function handle(req, res, next) {
-  var instanceConfiguration = {
-    rootPath: configuration['rootPath'] && interpolatePath(configuration['rootPath'], req.params)
-  , rootURI: configuration['rootURI'] && interpolateURL(configuration['rootURI'], req.params)
-  , libraryPath: configuration['libraryPath'] && interpolatePath(configuration['libraryPath'], req.params)
-  , libraryURI: configuration['libraryURI'] && interpolateURL(configuration['libraryURI'], req.params)
+  const instanceConfiguration = {
+    rootPath: configuration.rootPath && interpolatePath(configuration.rootPath, req.params),
+    rootURI: configuration.rootURI && interpolateURL(configuration.rootURI, req.params),
+    libraryPath: configuration.libraryPath && interpolatePath(configuration.libraryPath, req.params),
+    libraryURI: configuration.libraryURI && interpolateURL(configuration.libraryURI, req.params),
   };
-  var instance = new (Yajsml.Server)(instanceConfiguration);
+  const instance = new (Yajsml.Server)(instanceConfiguration);
 
-  if (configuration['manifest']) {
+  if (configuration.manifest) {
     request({
-        url: interpolateURL(configuration['manifest'], req.params)
-      , method: 'GET'
-      , encoding: 'utf8'
-      , timeout: 2000
-      }
-    , function (error, res, content) {
+      url: interpolateURL(configuration.manifest, req.params),
+      method: 'GET',
+      encoding: 'utf8',
+      timeout: 2000,
+    }
+    , (error, res, content) => {
       if (error || res.statusCode != '200') {
         // Silently use default associator
         instance.setAssociator(new (associators.SimpleAssociator)());
       } else {
         try {
-          var manifest = JSON.parse(content);
-          var associations =
+          const manifest = JSON.parse(content);
+          const associations =
               associators.associationsForSimpleMapping(manifest);
-          var associator = new (associators.StaticAssociator)(associations);
+          const associator = new (associators.StaticAssociator)(associations);
           instance.setAssociator(associator);
         } catch (e) {
           instance.setAssociator(new (associators.SimpleAssociator)());
@@ -131,9 +126,9 @@ function handle(req, res, next) {
     instance.handle(req, res, next);
   }
 }
-assetServer.use(connect.router(function (app) {
-  configuration['rootPath'] && app.all(configuration['rootPath'] + '/*', handle);
-  configuration['libraryPath'] && app.all(configuration['libraryPath'] + '/*', handle);
+assetServer.use(connect.router((app) => {
+  configuration.rootPath && app.all(`${configuration.rootPath}/*`, handle);
+  configuration.libraryPath && app.all(`${configuration.libraryPath}/*`, handle);
 }));
 
-assetServer.listen(configuration['port'] || 8450);
+assetServer.listen(configuration.port || 8450);

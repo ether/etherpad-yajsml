@@ -1,4 +1,4 @@
-/*!
+/* !
 
   Copyright (c) 2011 Chad Weider
 
@@ -66,17 +66,17 @@ function hasOwnProperty(o, k) {
 
 */
 function associationsForSimpleMapping(mapping) {
-  var packageModuleMap = {};
-  var modulePackageMap = {};
+  const packageModuleMap = {};
+  const modulePackageMap = {};
 
   for (var primaryKey in mapping) {
     if (hasOwnProperty(packageModuleMap, primaryKey)) {
-      throw new Error("A packaging is for the primary key "
-        + JSON.stringify(primaryKey) + " is already defined.");
+      throw new Error(`A packaging is for the primary key ${
+        JSON.stringify(primaryKey)} is already defined.`);
     } else {
-      var modules = mapping[primaryKey].concat([]);
+      const modules = mapping[primaryKey].concat([]);
       packageModuleMap[primaryKey] = modules;
-      modules.forEach(function (key) {
+      modules.forEach((key) => {
         // Don't overwrite in this case.
         if (!mapping.hasOwnProperty(key) || key == primaryKey) {
           modulePackageMap[key] = primaryKey;
@@ -125,22 +125,22 @@ function associationsForSimpleMapping(mapping) {
   ]
 */
 function complexMappingForAssociations(associations) {
-  var packageModuleMap = associations[0];
-  var modulePackageMap = associations[1];
+  const packageModuleMap = associations[0];
+  const modulePackageMap = associations[1];
 
-  var packages = [];
-  var mapping = {};
+  const packages = [];
+  const mapping = {};
 
-  for (var key in packageModuleMap) {
+  for (const key in packageModuleMap) {
     packages.push(key);
   }
 
-  var blankMapping = [];
+  const blankMapping = [];
   for (var i = 0, ii = packages.length; i < ii; i++) {
     blankMapping[i] = false;
   }
   for (var i = 0, ii = packages.length; i < ii; i++) {
-    packageModuleMap[packages[i]].forEach(function (key) {
+    packageModuleMap[packages[i]].forEach((key) => {
       if (!hasOwnProperty(mapping, key)) {
         mapping[key] = [i, blankMapping.concat([])];
       }
@@ -189,8 +189,8 @@ function complexMappingForAssociations(associations) {
   ]
 */
 function associationsForComplexMapping(packages, associations) {
-  var packageSet = {};
-  packages.forEach(function (package, i) {
+  const packageSet = {};
+  packages.forEach((package, i) => {
     if (package === undefined) {
       // BAD: Package has no purpose.
     } else if (hasOwnProperty(packageSet, package)) {
@@ -201,18 +201,18 @@ function associationsForComplexMapping(packages, associations) {
       // BAD: Package primary doesn't agree
     }
     packageSet[package] = true;
-  })
+  });
 
-  var packageModuleMap = {};
-  var modulePackageMap = {};
+  const packageModuleMap = {};
+  const modulePackageMap = {};
   for (var path in associations) {
     if (hasOwnProperty(associations, path)) {
-      var association = associations[path];
+      const association = associations[path];
 
       modulePackageMap[path] = packages[association[0]];
-      association[1].forEach(function (include, i) {
+      association[1].forEach((include, i) => {
         if (include) {
-          var package = packages[i];
+          const package = packages[i];
           if (!hasOwnProperty(packageModuleMap, package)) {
             packageModuleMap[package] = [];
           }
@@ -287,7 +287,7 @@ IdentityAssociator.prototype = new function () {
   }
   this.preferredPath = preferredPath;
   this.associatedModulePaths = associatedModulePaths;
-}
+}();
 
 function SimpleAssociator() {
   // empty
@@ -298,11 +298,11 @@ SimpleAssociator.prototype = new function () {
   }
   function associatedModulePaths(modulePath) {
     var modulePath = modulePath.replace(/\.js$|(?:^|\/)index\.js$|.\/+$/, '');
-    return [modulePath, modulePath + '.js', modulePath + '/index.js'];
+    return [modulePath, `${modulePath}.js`, `${modulePath}/index.js`];
   }
   this.preferredPath = preferredPath;
   this.associatedModulePaths = associatedModulePaths;
-}
+}();
 
 exports.StaticAssociator = StaticAssociator;
 exports.IdentityAssociator = IdentityAssociator;
