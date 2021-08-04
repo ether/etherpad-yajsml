@@ -1,70 +1,67 @@
-/* !
-
-  Copyright (c) 2011 Chad Weider
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in
-  all copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
-
-*/
+/*
+ * Copyright (c) 2011 Chad Weider
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 
 function hasOwnProperty(o, k) {
   return Object.prototype.hasOwnProperty.call(o, k);
 }
 
 /*
-  Produce fully structured module mapings from a simple description.
-
-  INPUT:
-  { '/module/path/1.js':
-    [ '/module/path/1.js'
-    , '/module/path/2.js'
-    , '/module/path/3.js'
-    , '/module/path/4.js'
-    ]
-  , '/module/path/4.js':
-    [ '/module/path/3.js'
-    , '/module/path/4.js'
-    , '/module/path/5.js'
-    ]
-  }
-
-  OUTPUT:
-  [ { '/module/path/1.js':
-      [ '/module/path/1.js'
-      , '/module/path/2.js'
-      , '/module/path/3.js'
-      , '/module/path/4.js'
-      ]
-    , '/module/path/4.js':
-      [ '/module/path/3.js'
-      , '/module/path/4.js'
-      , '/module/path/5.js'
-      ]
-    }
-  , { '/module/path/1.js': '/module/path/1.js'
-    , '/module/path/2.js': '/module/path/1.js'
-    , '/module/path/3.js': '/module/path/4.js'
-    , '/module/path/4.js': '/module/path/4.js'
-    , '/module/path/5.js': '/module/path/4.js'
-    }
-  ]
-
-*/
+ * Produce fully structured module mapings from a simple description.
+ *
+ * INPUT:
+ * { '/module/path/1.js':
+ *   [ '/module/path/1.js'
+ *   , '/module/path/2.js'
+ *   , '/module/path/3.js'
+ *   , '/module/path/4.js'
+ *   ]
+ * , '/module/path/4.js':
+ *   [ '/module/path/3.js'
+ *   , '/module/path/4.js'
+ *   , '/module/path/5.js'
+ *   ]
+ * }
+ *
+ * OUTPUT:
+ * [ { '/module/path/1.js':
+ *     [ '/module/path/1.js'
+ *     , '/module/path/2.js'
+ *     , '/module/path/3.js'
+ *     , '/module/path/4.js'
+ *     ]
+ *   , '/module/path/4.js':
+ *     [ '/module/path/3.js'
+ *     , '/module/path/4.js'
+ *     , '/module/path/5.js'
+ *     ]
+ *   }
+ * , { '/module/path/1.js': '/module/path/1.js'
+ *   , '/module/path/2.js': '/module/path/1.js'
+ *   , '/module/path/3.js': '/module/path/4.js'
+ *   , '/module/path/4.js': '/module/path/4.js'
+ *   , '/module/path/5.js': '/module/path/4.js'
+ *   }
+ * ]
+ */
 function associationsForSimpleMapping(mapping) {
   const packageModuleMap = {};
   const modulePackageMap = {};
@@ -89,41 +86,41 @@ function associationsForSimpleMapping(mapping) {
 
 
 /*
-  Inverse of `associationsForComplexMapping`.
-
-  INPUT:
-  [ { '/module/path/1.js':
-      [ '/module/path/1.js'
-      , '/module/path/2.js'
-      , '/module/path/3.js'
-      , '/module/path/4.js'
-      ]
-    , '/module/path/4.js':
-      [ '/module/path/3.js'
-      , '/module/path/4.js'
-      , '/module/path/5.js'
-      ]
-    }
-  , { '/module/path/1.js': '/module/path/1.js'
-    , '/module/path/2.js': '/module/path/1.js'
-    , '/module/path/3.js': '/module/path/4.js'
-    , '/module/path/4.js': '/module/path/4.js'
-    , '/module/path/5.js': '/module/path/4.js'
-    }
-  ]
-
-  OUTPUT:
-  [ [ '/module/path/1.js'
-    , '/module/path/4.js'
-    ]
-  , { '/module/path/1.js': [0, [true, false]]
-    , '/module/path/2.js': [0, [true, false]]
-    , '/module/path/3.js': [1, [true, true]]
-    , '/module/path/4.js': [1, [true, true]]
-    , '/module/path/5.js': [1, [false, true]]
-    }
-  ]
-*/
+ * Inverse of `associationsForComplexMapping`.
+ *
+ * INPUT:
+ * [ { '/module/path/1.js':
+ *     [ '/module/path/1.js'
+ *     , '/module/path/2.js'
+ *     , '/module/path/3.js'
+ *     , '/module/path/4.js'
+ *     ]
+ *   , '/module/path/4.js':
+ *     [ '/module/path/3.js'
+ *     , '/module/path/4.js'
+ *     , '/module/path/5.js'
+ *     ]
+ *   }
+ * , { '/module/path/1.js': '/module/path/1.js'
+ *   , '/module/path/2.js': '/module/path/1.js'
+ *   , '/module/path/3.js': '/module/path/4.js'
+ *   , '/module/path/4.js': '/module/path/4.js'
+ *   , '/module/path/5.js': '/module/path/4.js'
+ *   }
+ * ]
+ *
+ * OUTPUT:
+ * [ [ '/module/path/1.js'
+ *   , '/module/path/4.js'
+ *   ]
+ * , { '/module/path/1.js': [0, [true, false]]
+ *   , '/module/path/2.js': [0, [true, false]]
+ *   , '/module/path/3.js': [1, [true, true]]
+ *   , '/module/path/4.js': [1, [true, true]]
+ *   , '/module/path/5.js': [1, [false, true]]
+ *   }
+ * ]
+ */
 function complexMappingForAssociations(associations) {
   const packageModuleMap = associations[0];
   const modulePackageMap = associations[1];
@@ -153,41 +150,41 @@ function complexMappingForAssociations(associations) {
 }
 
 /*
-  Produce fully structured module mapings from association description.
-
-  INPUT:
-  [ [ '/module/path/1.js'
-    , '/module/path/4.js'
-    ]
-  , { '/module/path/1.js': [0, [true, false]]
-    , '/module/path/2.js': [0, [true, false]]
-    , '/module/path/3.js': [1, [true, true]]
-    , '/module/path/4.js': [1, [true, true]]
-    , '/module/path/5.js': [1, [false, true]]
-    }
-  ]
-
-  OUTPUT:
-  [ { '/module/path/1.js':
-      [ '/module/path/1.js'
-      , '/module/path/2.js'
-      , '/module/path/3.js'
-      , '/module/path/4.js'
-      ]
-    , '/module/path/4.js':
-      [ '/module/path/3.js'
-      , '/module/path/4.js'
-      , '/module/path/5.js'
-      ]
-    }
-  , { '/module/path/1.js': '/module/path/1.js'
-    , '/module/path/2.js': '/module/path/1.js'
-    , '/module/path/3.js': '/module/path/4.js'
-    , '/module/path/4.js': '/module/path/4.js'
-    , '/module/path/5.js': '/module/path/4.js'
-    }
-  ]
-*/
+ * Produce fully structured module mapings from association description.
+ *
+ * INPUT:
+ * [ [ '/module/path/1.js'
+ *   , '/module/path/4.js'
+ *   ]
+ * , { '/module/path/1.js': [0, [true, false]]
+ *   , '/module/path/2.js': [0, [true, false]]
+ *   , '/module/path/3.js': [1, [true, true]]
+ *   , '/module/path/4.js': [1, [true, true]]
+ *   , '/module/path/5.js': [1, [false, true]]
+ *   }
+ * ]
+ *
+ * OUTPUT:
+ * [ { '/module/path/1.js':
+ *     [ '/module/path/1.js'
+ *     , '/module/path/2.js'
+ *     , '/module/path/3.js'
+ *     , '/module/path/4.js'
+ *     ]
+ *   , '/module/path/4.js':
+ *     [ '/module/path/3.js'
+ *     , '/module/path/4.js'
+ *     , '/module/path/5.js'
+ *     ]
+ *   }
+ * , { '/module/path/1.js': '/module/path/1.js'
+ *   , '/module/path/2.js': '/module/path/1.js'
+ *   , '/module/path/3.js': '/module/path/4.js'
+ *   , '/module/path/4.js': '/module/path/4.js'
+ *   , '/module/path/5.js': '/module/path/4.js'
+ *   }
+ * ]
+ */
 function associationsForComplexMapping(packages, associations) {
   const packageSet = {};
   packages.forEach((package, i) => {
@@ -226,30 +223,30 @@ function associationsForComplexMapping(packages, associations) {
 }
 
 /*
-  I determine which modules are associated with one another for a JS module
-  server.
-
-  INPUT:
-  [ { '/module/path/1.js':
-      [ '/module/path/1.js'
-      , '/module/path/2.js'
-      , '/module/path/3.js'
-      , '/module/path/4.js'
-      ]
-    , '/module/path/4.js':
-      [ '/module/path/3.js'
-      , '/module/path/4.js'
-      , '/module/path/5.js'
-      ]
-    }
-  , { '/module/path/1.js': '/module/path/1.js'
-    , '/module/path/2.js': '/module/path/1.js'
-    , '/module/path/3.js': '/module/path/4.js'
-    , '/module/path/4.js': '/module/path/4.js'
-    , '/module/path/5.js': '/module/path/4.js'
-    }
-  ]
-*/
+ * I determine which modules are associated with one another for a JS module
+ * server.
+ *
+ * INPUT:
+ * [ { '/module/path/1.js':
+ *     [ '/module/path/1.js'
+ *     , '/module/path/2.js'
+ *     , '/module/path/3.js'
+ *     , '/module/path/4.js'
+ *     ]
+ *   , '/module/path/4.js':
+ *     [ '/module/path/3.js'
+ *     , '/module/path/4.js'
+ *     , '/module/path/5.js'
+ *     ]
+ *   }
+ * , { '/module/path/1.js': '/module/path/1.js'
+ *   , '/module/path/2.js': '/module/path/1.js'
+ *   , '/module/path/3.js': '/module/path/4.js'
+ *   , '/module/path/4.js': '/module/path/4.js'
+ *   , '/module/path/5.js': '/module/path/4.js'
+ *   }
+ * ]
+ */
 function StaticAssociator(associations, next) {
   this._packageModuleMap = associations[0];
   this._modulePackageMap = associations[1];
