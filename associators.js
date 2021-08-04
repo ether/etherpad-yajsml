@@ -187,17 +187,17 @@ function complexMappingForAssociations(associations) {
  */
 function associationsForComplexMapping(packages, associations) {
   const packageSet = {};
-  packages.forEach((package, i) => {
-    if (package === undefined) {
+  packages.forEach((pkg, i) => {
+    if (pkg === undefined) {
       // BAD: Package has no purpose.
-    } else if (hasOwnProperty(packageSet, package)) {
+    } else if (hasOwnProperty(packageSet, pkg)) {
       // BAD: Duplicate package.
-    } else if (!hasOwnProperty(associations, package)) {
+    } else if (!hasOwnProperty(associations, pkg)) {
       // BAD: Package primary doesn't exist for this package
-    } else if (associations[package][0] != i) {
+    } else if (associations[pkg][0] != i) {
       // BAD: Package primary doesn't agree
     }
-    packageSet[package] = true;
+    packageSet[pkg] = true;
   });
 
   const packageModuleMap = {};
@@ -209,11 +209,11 @@ function associationsForComplexMapping(packages, associations) {
       modulePackageMap[path] = packages[association[0]];
       association[1].forEach((include, i) => {
         if (include) {
-          const package = packages[i];
-          if (!hasOwnProperty(packageModuleMap, package)) {
-            packageModuleMap[package] = [];
+          const pkg = packages[i];
+          if (!hasOwnProperty(packageModuleMap, pkg)) {
+            packageModuleMap[pkg] = [];
           }
-          packageModuleMap[package].push(path);
+          packageModuleMap[pkg].push(path);
         }
       });
     }
