@@ -25,25 +25,25 @@ const Uglify = require('uglify-js');
 function UglifyMiddleware() {
 }
 UglifyMiddleware.prototype = new function () {
-  function handle(req, res, next) {
-    const old_res = {};
-    old_res.writeHead = res.writeHead;
+  this.handle = function (req, res, next) {
+    const oldRes = {};
+    oldRes.writeHead = res.writeHead;
 
     const console = this._console;
 
-    res.writeHead = function (status, headers) {
+    res.writeHead = (status, headers) => {
       if (headers &&
           headers['content-type'] &&
-          headers['content-type'].indexOf('application/javascript;') == 0 &&
-          req.cookies && req.cookies['js-compress-override'] != 'bypass'
+          headers['content-type'].indexOf('application/javascript;') === 0 &&
+          req.cookies && req.cookies['js-compress-override'] !== 'bypass'
       ) {
         let buffer = '';
-        old_res.write = res.write;
-        old_res.end = res.end;
-        res.write = function (data, encoding) {
+        oldRes.write = res.write;
+        oldRes.end = res.end;
+        res.write = (data, encoding) => {
           buffer += data.toString(encoding);
         };
-        res.end = function (data, encoding) {
+        res.end = (data, encoding) => {
           if (data) {
             res.write(data, encoding);
           }
@@ -60,21 +60,19 @@ UglifyMiddleware.prototype = new function () {
             content = buffer;
           }
 
-          res.write = old_res.write;
-          res.end = old_res.end;
+          res.write = oldRes.write;
+          res.end = oldRes.end;
           content && res.write(content, 'utf8');
           res.end();
         };
       }
 
-      res.writeHead = old_res.writeHead;
+      res.writeHead = oldRes.writeHead;
       res.writeHead(status, headers);
     };
 
     next(undefined, req, res);
-  }
-
-  this.handle = handle;
+  };
 }();
 
 module.exports = UglifyMiddleware;

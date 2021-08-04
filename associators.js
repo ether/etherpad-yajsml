@@ -20,9 +20,7 @@
  * SOFTWARE.
  */
 
-function hasOwnProperty(o, k) {
-  return Object.prototype.hasOwnProperty.call(o, k);
-}
+const hasOwnProperty = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 /*
  * Produce fully structured module mapings from a simple description.
@@ -62,11 +60,11 @@ function hasOwnProperty(o, k) {
  *   }
  * ]
  */
-function associationsForSimpleMapping(mapping) {
+const associationsForSimpleMapping = (mapping) => {
   const packageModuleMap = {};
   const modulePackageMap = {};
 
-  for (var primaryKey in mapping) {
+  for (const primaryKey in mapping) {
     if (hasOwnProperty(packageModuleMap, primaryKey)) {
       throw new Error(`A packaging is for the primary key ${
         JSON.stringify(primaryKey)} is already defined.`);
@@ -75,14 +73,14 @@ function associationsForSimpleMapping(mapping) {
       packageModuleMap[primaryKey] = modules;
       modules.forEach((key) => {
         // Don't overwrite in this case.
-        if (!mapping.hasOwnProperty(key) || key == primaryKey) {
+        if (!hasOwnProperty(mapping, key) || key === primaryKey) {
           modulePackageMap[key] = primaryKey;
         }
       });
     }
   }
   return [packageModuleMap, modulePackageMap];
-}
+};
 
 
 /*
@@ -121,33 +119,25 @@ function associationsForSimpleMapping(mapping) {
  *   }
  * ]
  */
-function complexMappingForAssociations(associations) {
+const complexMappingForAssociations = (associations) => {
   const packageModuleMap = associations[0];
-  const modulePackageMap = associations[1];
 
-  const packages = [];
+  const packages = Object.keys(packageModuleMap);
   const mapping = {};
 
-  for (const key in packageModuleMap) {
-    packages.push(key);
-  }
-
-  const blankMapping = [];
-  for (var i = 0, ii = packages.length; i < ii; i++) {
-    blankMapping[i] = false;
-  }
-  for (var i = 0, ii = packages.length; i < ii; i++) {
-    packageModuleMap[packages[i]].forEach((key) => {
+  const blankMapping = packages.map(() => false);
+  packages.forEach((pkg, i) => {
+    packageModuleMap[pkg].forEach((key) => {
       if (!hasOwnProperty(mapping, key)) {
         mapping[key] = [i, blankMapping.concat([])];
       }
       mapping[key][0] = i;
       mapping[key][1][i] = true;
     });
-  }
+  });
 
   return [packages, mapping];
-}
+};
 
 /*
  * Produce fully structured module mapings from association description.
@@ -185,7 +175,7 @@ function complexMappingForAssociations(associations) {
  *   }
  * ]
  */
-function associationsForComplexMapping(packages, associations) {
+const associationsForComplexMapping = (packages, associations) => {
   const packageSet = {};
   packages.forEach((pkg, i) => {
     if (pkg === undefined) {
@@ -194,7 +184,7 @@ function associationsForComplexMapping(packages, associations) {
       // BAD: Duplicate package.
     } else if (!hasOwnProperty(associations, pkg)) {
       // BAD: Package primary doesn't exist for this package
-    } else if (associations[pkg][0] != i) {
+    } else if (associations[pkg][0] !== i) {
       // BAD: Package primary doesn't agree
     }
     packageSet[pkg] = true;
@@ -202,25 +192,21 @@ function associationsForComplexMapping(packages, associations) {
 
   const packageModuleMap = {};
   const modulePackageMap = {};
-  for (var path in associations) {
-    if (hasOwnProperty(associations, path)) {
-      const association = associations[path];
-
-      modulePackageMap[path] = packages[association[0]];
-      association[1].forEach((include, i) => {
-        if (include) {
-          const pkg = packages[i];
-          if (!hasOwnProperty(packageModuleMap, pkg)) {
-            packageModuleMap[pkg] = [];
-          }
-          packageModuleMap[pkg].push(path);
+  for (const [path, association] of Object.entries(associations)) {
+    modulePackageMap[path] = packages[association[0]];
+    association[1].forEach((include, i) => {
+      if (include) {
+        const pkg = packages[i];
+        if (!hasOwnProperty(packageModuleMap, pkg)) {
+          packageModuleMap[pkg] = [];
         }
-      });
-    }
+        packageModuleMap[pkg].push(path);
+      }
+    });
   }
 
   return [packageModuleMap, modulePackageMap];
-}
+};
 
 /*
  * I determine which modules are associated with one another for a JS module
@@ -247,11 +233,11 @@ function associationsForComplexMapping(packages, associations) {
  *   }
  * ]
  */
-function StaticAssociator(associations, next) {
+const StaticAssociator = function (associations, next) {
   this._packageModuleMap = associations[0];
   this._modulePackageMap = associations[1];
   this._next = next || new IdentityAssociator();
-}
+};
 StaticAssociator.prototype = new function () {
   function preferredPath(modulePath) {
     if (hasOwnProperty(this._modulePackageMap, modulePath)) {
@@ -261,7 +247,7 @@ StaticAssociator.prototype = new function () {
     }
   }
   function associatedModulePaths(modulePath) {
-    var modulePath = this.preferredPath(modulePath);
+    modulePath = this.preferredPath(modulePath);
     if (hasOwnProperty(this._packageModuleMap, modulePath)) {
       return this._packageModuleMap[modulePath];
     } else {
@@ -272,29 +258,29 @@ StaticAssociator.prototype = new function () {
   this.associatedModulePaths = associatedModulePaths;
 }();
 
-function IdentityAssociator() {
+const IdentityAssociator = function () {
   // empty
-}
+};
 IdentityAssociator.prototype = new function () {
-  function preferredPath(modulePath) {
+  const preferredPath = function (modulePath) {
     return modulePath;
-  }
-  function associatedModulePaths(modulePath) {
+  };
+  const associatedModulePaths = function (modulePath) {
     return [modulePath];
-  }
+  };
   this.preferredPath = preferredPath;
   this.associatedModulePaths = associatedModulePaths;
 }();
 
-function SimpleAssociator() {
+const SimpleAssociator = function () {
   // empty
-}
+};
 SimpleAssociator.prototype = new function () {
-  function preferredPath(modulePath) {
+  const preferredPath = function (modulePath) {
     return this.associatedModulePaths(modulePath)[0];
-  }
-  function associatedModulePaths(modulePath) {
-    var modulePath = modulePath.replace(/\.js$|(?:^|\/)index\.js$|.\/+$/, '');
+  };
+  const associatedModulePaths = function (modulePath) {
+    modulePath = modulePath.replace(/\.js$|(?:^|\/)index\.js$|.\/+$/, '');
     return [modulePath, `${modulePath}.js`, `${modulePath}/index.js`];
   }
   this.preferredPath = preferredPath;

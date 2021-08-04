@@ -31,12 +31,11 @@ const compressor = new UglifyMiddleware();
 compressor._console = console;
 
 const Yajsml = require('etherpad-yajsml');
-const Server = Yajsml.Server;
 const associators = Yajsml.associators;
 
 let configuration;
 for (let i = 1, ii = process.argv.length; i < ii; i++) {
-  if (process.argv[i] == '--configuration') {
+  if (process.argv[i] === '--configuration') {
     const configPath = process.argv[i + 1];
     if (!configPath) {
       throw new Error('Configuration option specified, but no path given.');
@@ -70,36 +69,35 @@ if (configuration.minify) {
   assetServer.use(compressor);
 }
 
-function interpolatePath(path, values) {
-  return path && path.replace(/(\/)?:(\w+)/, (_, slash, key) => (slash ? '/' : '') + encodeURIComponent(String((values || {})[key])));
-}
+const interpolatePath = (path, values) => path && path.replace(
+    /(\/)?:(\w+)/, (_, slash, key) => slash + encodeURIComponent((values || {})[key]));
 
-function interpolateURL(url, values) {
-  const parsed = require('url').parse(url);
+const interpolateURL = (url, values) => {
+  const parsed = new URL(url);
   if (parsed) {
     parsed.pathname = interpolatePath(parsed.pathname, values);
   }
-  return require('url').format(parsed);
-}
+  return parsed.href;
+};
 
-function handle(req, res, next) {
+const handle = (req, res, next) => {
   const instanceConfiguration = {
     rootPath: configuration.rootPath && interpolatePath(configuration.rootPath, req.params),
     rootURI: configuration.rootURI && interpolateURL(configuration.rootURI, req.params),
-    libraryPath: configuration.libraryPath && interpolatePath(configuration.libraryPath, req.params),
+    libraryPath:
+        configuration.libraryPath && interpolatePath(configuration.libraryPath, req.params),
     libraryURI: configuration.libraryURI && interpolateURL(configuration.libraryURI, req.params),
   };
   const instance = new (Yajsml.Server)(instanceConfiguration);
-
+  const respond = () => instance.handle(req, res, next);
   if (configuration.manifest) {
     request({
       url: interpolateURL(configuration.manifest, req.params),
       method: 'GET',
       encoding: 'utf8',
       timeout: 2000,
-    }
-    , (error, res, content) => {
-      if (error || res.statusCode != '200') {
+    }, (error, res, content) => {
+      if (error || res.statusCode !== '200') {
         // Silently use default associator
         instance.setAssociator(new (associators.SimpleAssociator)());
       } else {
@@ -119,11 +117,8 @@ function handle(req, res, next) {
     instance.setAssociator(new (associators.SimpleAssociator)());
     respond();
   }
+};
 
-  function respond() {
-    instance.handle(req, res, next);
-  }
-}
 assetServer.use(connect.router((app) => {
   configuration.rootPath && app.all(`${configuration.rootPath}/*`, handle);
   configuration.libraryPath && app.all(`${configuration.libraryPath}/*`, handle);

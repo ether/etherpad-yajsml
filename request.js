@@ -21,7 +21,6 @@
  */
 
 const fs = require('fs');
-const urlutil = require('url');
 const pathutil = require('path');
 
 let mime = undefined;
@@ -31,7 +30,7 @@ try {
   // skip.
 }
 
-const fs_client = (new function () {
+const fsClient = (new function () {
   const STATUS_MESSAGES = {
     403: '403: Access denied.',
     404: '404: File not found.',
@@ -39,10 +38,10 @@ const fs_client = (new function () {
     502: '502: Error reading file.',
   };
 
-  function request(options, callback) {
+  this.request = function (options, callback) {
     let path = options.path;
     path = decodeURIComponent(path);
-    if (path.charAt(0) == '/') { // Account for '/C:\Windows' type of paths.
+    if (path.charAt(0) === '/') { // Account for '/C:\Windows' type of paths.
       path = pathutil.resolve('/', path.slice(1));
     }
     path = pathutil.normalize(path);
@@ -55,8 +54,8 @@ const fs_client = (new function () {
     response.headers = {};
 
     const request = new (require('events').EventEmitter)();
-    request.end = function () {
-      if (options.method != 'HEAD' && options.method != 'GET') {
+    request.end = () => {
+      if (options.method !== 'HEAD' && options.method !== 'GET') {
         response.statusCode = 405;
         response.headers.allow = 'HEAD, GET';
 
@@ -65,11 +64,11 @@ const fs_client = (new function () {
         response.emit('end');
         return;
       }
-      function after_head() {
-        if (method == 'HEAD') {
+      const afterHead = () => {
+        if (method === 'HEAD') {
           callback(response);
           response.emit('end');
-        } else if (response.statusCode != 200) {
+        } else if (response.statusCode !== 200) {
           if (STATUS_MESSAGES[response.statusCode]) {
             response.headers['content-type'] = 'text/plain; charset=utf-8';
           }
@@ -82,8 +81,8 @@ const fs_client = (new function () {
         } else {
           get();
         }
-      }
-      function get() {
+      };
+      const get = () => {
         response.statusCode = 200;
         let type, charset;
         if (mime) {
@@ -101,13 +100,13 @@ const fs_client = (new function () {
 
         callback(response);
         stream.resume();
-      }
+      };
       fs.lstat(path, (error, stats) => {
         if (error) {
-          if (error.code == 'ENOENT') {
+          if (error.code === 'ENOENT') {
             response.statusCode = 404;
             let parentTries = 2;
-            var statParent = function (path) {
+            const statParent = (path) => {
               const parentPath = pathutil.dirname(path);
               fs.stat(parentPath, (error, stats) => {
                 if (!error) {
@@ -115,29 +114,29 @@ const fs_client = (new function () {
                   const modifiedLast = new Date(stats.mtime);
                   response.headers.date = date.toUTCString();
                   response.headers['last-modified'] = modifiedLast.toUTCString();
-                  after_head();
-                } else if (parentTries > 0 || parentPath == '/') {
+                  afterHead();
+                } else if (parentTries > 0 || parentPath === '/') {
                   parentTries--;
                   statParent(parentPath);
-                } else if (error.code == 'ENOENT') {
+                } else if (error.code === 'ENOENT') {
                   response.statusCode = 404;
                 } else {
                   response.statusCode = 502;
-                  after_head();
+                  afterHead();
                 }
               });
             };
             statParent(path);
-          } else if (error.code == 'EACCESS') {
+          } else if (error.code === 'EACCESS') {
             response.statusCode = 403;
-            after_head();
+            afterHead();
           } else {
             response.statusCode = 502;
-            after_head();
+            afterHead();
           }
         } else if (stats.isFile()) {
-          var date = new Date();
-          var modifiedLast = new Date(stats.mtime);
+          const date = new Date();
+          const modifiedLast = new Date(stats.mtime);
           let modifiedSince = (options.headers || {})['if-modified-since'];
           modifiedSince = modifiedSince && new Date(modifiedSince);
 
@@ -149,10 +148,10 @@ const fs_client = (new function () {
           } else {
             response.statusCode = 200;
           }
-          after_head();
+          afterHead();
         } else if (stats.isSymbolicLink()) {
-          var date = new Date();
-          var modifiedLast = new Date(stats.mtime);
+          const date = new Date();
+          const modifiedLast = new Date(stats.mtime);
           response.headers.date = date.toUTCString();
           response.headers['last-modified'] = modifiedLast.toUTCString();
 
@@ -163,29 +162,28 @@ const fs_client = (new function () {
             } else {
               response.statusCode = 502;
             }
-            after_head();
+            afterHead();
           });
         } else {
           response.statusCode = 404;
-          after_head();
+          afterHead();
         }
       });
     };
     return request;
-  }
-  this.request = request;
+  };
 }());
 
 /* Retrieve file, http, or https resources. */
 /* All of just just because normal Request.js doesn't support `file://`? */
-function requestURI(url, method, headers, callback, redirectCount) {
-  const parsedURL = urlutil.parse(url);
+const requestURI = (url, method, headers, callback, redirectCount) => {
+  const parsedURL = new URL(url);
   let client = undefined;
-  if (parsedURL.protocol == 'file:') {
-    client = fs_client;
-  } else if (parsedURL.protocol == 'http:') {
+  if (parsedURL.protocol === 'file:') {
+    client = fsClient;
+  } else if (parsedURL.protocol === 'http:') {
     client = require('http');
-  } else if (parsedURL.protocol == 'https:') {
+  } else if (parsedURL.protocol === 'https:') {
     client = require('https');
   } else {
     throw new Error(
@@ -195,16 +193,16 @@ function requestURI(url, method, headers, callback, redirectCount) {
   const request = client.request({
     hostname: parsedURL.hostname,
     port: parsedURL.port,
-    path: parsedURL.path,
+    path: parsedURL.pathname + parsedURL.search,
     method,
     headers,
   }, (response) => {
     let buffer = undefined;
     let ended = false;
     let closed = false;
-    if (response.statusCode == 301 ||
-        response.statusCode == 302 ||
-        response.statusCode == 307) {
+    if (response.statusCode === 301 ||
+        response.statusCode === 302 ||
+        response.statusCode === 307) {
       response.close();
       redirectCount = redirectCount || 0;
       if (redirectCount > 3) {
@@ -213,13 +211,7 @@ function requestURI(url, method, headers, callback, redirectCount) {
       } else {
         try {
           redirectCount;
-          requestURI(
-              response.headers.location
-              , 'GET'
-              , headers
-              , callback
-              , redirectCount + 1
-          );
+          requestURI(response.headers.location, 'GET', headers, callback, redirectCount + 1);
         } catch (e) {
           callback(502, {}, undefined);
         }
@@ -244,32 +236,30 @@ function requestURI(url, method, headers, callback, redirectCount) {
     callback(502, {});
   });
   request.end();
-}
+};
 
-function requestURIs(locations, method, headers, callback) {
+const requestURIs = (locations, method, headers, callback) => {
   let pendingRequests = locations.length;
   const responses = [];
 
-  function respondFor(i) {
-    return function (status, headers, content) {
-      responses[i] = [status, headers, content];
-      if (--pendingRequests == 0) {
-        completed();
-      }
-    };
-  }
+  const respondFor = (i) => (status, headers, content) => {
+    responses[i] = [status, headers, content];
+    if (--pendingRequests === 0) {
+      completed();
+    }
+  };
 
-  for (let i = 0, ii = locations.length; i < ii; i++) {
-    requestURI(locations[i], method, headers, respondFor(i));
-  }
-
-  function completed() {
+  const completed = () => {
     const statuss = responses.map((x) => x[0]);
     const headerss = responses.map((x) => x[1]);
     const contentss = responses.map((x) => x[2]);
     callback(statuss, headerss, contentss);
+  };
+
+  for (let i = 0, ii = locations.length; i < ii; i++) {
+    requestURI(locations[i], method, headers, respondFor(i));
   }
-}
+};
 
 exports.requestURI = requestURI;
 exports.requestURIs = requestURIs;
