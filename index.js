@@ -20,5 +20,7 @@
  * SOFTWARE.
  */
 
+'use strict';
+
 exports.Server = require('./server').Server;
 exports.associators = require('./associators');

@@ -20,6 +20,8 @@
  * SOFTWARE.
  */
 
+'use strict';
+
 const hasOwnProperty = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 /*

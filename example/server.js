@@ -20,6 +20,8 @@
  * SOFTWARE.
  */
 
+'use strict';
+
 const fs = require('fs');
 const connect = require('connect');
 const cors = require('connect-cors');

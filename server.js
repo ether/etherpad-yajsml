@@ -20,6 +20,8 @@
  * SOFTWARE.
  */
 
+'use strict';
+
 const requestURI = require('./request').requestURI;
 
 const HEADER_WHITELIST =

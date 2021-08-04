@@ -20,6 +20,8 @@
  * SOFTWARE.
  */
 
+'use strict';
+
 const Uglify = require('uglify-js');
 
 function UglifyMiddleware() {
