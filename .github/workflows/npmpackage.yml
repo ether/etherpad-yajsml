@@ -16,7 +16,9 @@ jobs:
         with:
           node-version: 12
       - run: npm ci
+      - run: cd example && npm ci
       - run: npm test
+      - run: npm run lint
 
   publish-npm:
     if: github.event_name == 'push'

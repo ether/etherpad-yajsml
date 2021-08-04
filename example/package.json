@@ -14,6 +14,14 @@
     "request": "2.9",
     "uglify-js": "^1.3.5"
   },
+  "engines": {
+    "node": ">=12.13.0"
+  },
+  "eslintConfig": {
+    "ignorePatterns": [
+      "public/javascripts/lib/**/*"
+    ]
+  },
   "private": true,
   "version": "1.0.1"
 }
