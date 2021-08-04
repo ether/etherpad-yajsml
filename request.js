@@ -32,15 +32,15 @@ try {
   // skip.
 }
 
-const fsClient = (new function () {
-  const STATUS_MESSAGES = {
-    403: '403: Access denied.',
-    404: '404: File not found.',
-    405: '405: Only the HEAD or GET methods are allowed.',
-    502: '502: Error reading file.',
-  };
+const STATUS_MESSAGES = {
+  403: '403: Access denied.',
+  404: '404: File not found.',
+  405: '405: Only the HEAD or GET methods are allowed.',
+  502: '502: Error reading file.',
+};
 
-  this.request = function (options, callback) {
+const fsClient = new class {
+  request(options, callback) {
     let path = options.path;
     path = decodeURIComponent(path);
     if (path.charAt(0) === '/') { // Account for '/C:\Windows' type of paths.
@@ -173,8 +173,8 @@ const fsClient = (new function () {
       });
     };
     return request;
-  };
-}());
+  }
+}();
 
 /* Retrieve file, http, or https resources. */
 /* All of just just because normal Request.js doesn't support `file://`? */

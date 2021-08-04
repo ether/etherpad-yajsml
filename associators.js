@@ -235,20 +235,20 @@ const associationsForComplexMapping = (packages, associations) => {
  *   }
  * ]
  */
-const StaticAssociator = function (associations, next) {
-  this._packageModuleMap = associations[0];
-  this._modulePackageMap = associations[1];
-  this._next = next || new IdentityAssociator();
-};
-StaticAssociator.prototype = new function () {
-  function preferredPath(modulePath) {
+class StaticAssociator {
+  constructor(associations, next) {
+    this._packageModuleMap = associations[0];
+    this._modulePackageMap = associations[1];
+    this._next = next || new IdentityAssociator();
+  }
+  preferredPath(modulePath) {
     if (hasOwnProperty(this._modulePackageMap, modulePath)) {
       return this._modulePackageMap[modulePath];
     } else {
       return this._next.preferredPath(modulePath);
     }
   }
-  function associatedModulePaths(modulePath) {
+  associatedModulePaths(modulePath) {
     modulePath = this.preferredPath(modulePath);
     if (hasOwnProperty(this._packageModuleMap, modulePath)) {
       return this._packageModuleMap[modulePath];
@@ -256,38 +256,26 @@ StaticAssociator.prototype = new function () {
       return this._next.associatedModulePaths(modulePath);
     }
   }
-  this.preferredPath = preferredPath;
-  this.associatedModulePaths = associatedModulePaths;
-}();
+}
 
-const IdentityAssociator = function () {
-  // empty
-};
-IdentityAssociator.prototype = new function () {
-  const preferredPath = function (modulePath) {
+class IdentityAssociator {
+  preferredPath(modulePath) {
     return modulePath;
-  };
-  const associatedModulePaths = function (modulePath) {
+  }
+  associatedModulePaths(modulePath) {
     return [modulePath];
-  };
-  this.preferredPath = preferredPath;
-  this.associatedModulePaths = associatedModulePaths;
-}();
+  }
+}
 
-const SimpleAssociator = function () {
-  // empty
-};
-SimpleAssociator.prototype = new function () {
-  const preferredPath = function (modulePath) {
+class SimpleAssociator {
+  preferredPath(modulePath) {
     return this.associatedModulePaths(modulePath)[0];
-  };
-  const associatedModulePaths = function (modulePath) {
+  }
+  associatedModulePaths(modulePath) {
     modulePath = modulePath.replace(/\.js$|(?:^|\/)index\.js$|.\/+$/, '');
     return [modulePath, `${modulePath}.js`, `${modulePath}/index.js`];
   }
-  this.preferredPath = preferredPath;
-  this.associatedModulePaths = associatedModulePaths;
-}();
+}
 
 exports.StaticAssociator = StaticAssociator;
 exports.IdentityAssociator = IdentityAssociator;

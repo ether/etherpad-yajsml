@@ -24,10 +24,8 @@
 
 const Uglify = require('uglify-js');
 
-function UglifyMiddleware() {
-}
-UglifyMiddleware.prototype = new function () {
-  this.handle = function (req, res, next) {
+module.exports = class UglifyMiddleware {
+  handle(req, res, next) {
     const oldRes = {};
     oldRes.writeHead = res.writeHead;
 
@@ -74,7 +72,5 @@ UglifyMiddleware.prototype = new function () {
     };
 
     next(undefined, req, res);
-  };
-}();
-
-module.exports = UglifyMiddleware;
+  }
+};
