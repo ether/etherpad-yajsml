@@ -33,7 +33,7 @@ var UglifyMiddleware = require('./uglify-middleware');
 var compressor = new UglifyMiddleware();
 compressor._console = console;
 
-var Yajsml = require('yajsml');
+var Yajsml = require('etherpad-yajsml');
 var Server = Yajsml.Server;
 var associators = Yajsml.associators;
 
