@@ -13,6 +13,9 @@
     "url": "http://oofn.net"
   },
   "dependencies": {},
+  "optionalDependencies": {
+    "mime": "^1.6.0"
+  },
   "version": "0.0.7",
   "repository": {
     "type": "git",
