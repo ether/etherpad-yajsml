@@ -87,26 +87,12 @@ function normalizePath(path) {
   return pathComponents2.join('/');
 }
 
-function toJSLiteral(string, exceptions) {
-  // Remember, JSON is not a subset of JavaScript. Some line terminators must
-  // be escaped manually.
-  var result = '"' + escapeJavaScriptData(string, exceptions) + '"';
-  result = result.replace('\u2028', '\\u2028').replace('\u2029', '\\u2029');
-  return result;
-}
-
 // OSWASP Guidlines: escape all non alphanumeric characters in ASCII space.
-var JAVASCRIPT_CHARACTERS_EXPRESSION =
-    /[\x00-\x2F\x3A-\x40\x5B-\x60\x7B-\xFF]/g;
-function escapeJavaScriptData(text, exceptions) {
-  return text && text.replace(JAVASCRIPT_CHARACTERS_EXPRESSION, function (c) {
-    if (exceptions && exceptions.indexOf(c) != -1) {
-      return c;
-    } else {
-      return "\\x" + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }
-  });
-}
+const escapeNonAlphanumerics = (text, exceptions) => text && text.replace(
+    /[^0-9A-Za-z]/g,
+    (c) => exceptions && exceptions.includes(c)
+      ? c
+      : `\\u${(`000${c.charCodeAt(0).toString(16)}`).slice(-4)}`);
 
 // Only allow a subset of JavaScript expressions that are reasonable and cannot
 // look like HTML (e.g. `require.define`, `requireForKey("key").define`).
@@ -194,7 +180,7 @@ function packagedDefine(JSONPCallback, moduleMap) {
   content = JSONPCallback + '({';
   for (path in moduleMap) {
     if (hasOwnProperty(moduleMap, path)) {
-      content += toJSLiteral(path, './-_') + ': ';
+      content += `"${escapeNonAlphanumerics(path, './-_')}": `;
       if (moduleMap[path] === null) {
         content += 'null';
       } else {
