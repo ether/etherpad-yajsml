@@ -12,5 +12,6 @@
     "connect-cors": "0.5.0",
     "request": "2.9"
   },
+  "private": true,
   "version": "1.0.1"
 }
