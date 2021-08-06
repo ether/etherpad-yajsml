@@ -200,10 +200,7 @@ function packagedDefine(JSONPCallback, moduleMap) {
       if (moduleMap[path] === null) {
         content += 'null\n';
       } else {
-        content += 'function (require, exports, module) {'
-          + moduleMap[path] + '\n'
-          + '}\n'
-          ;
+        content += `function (require, exports, module) {${moduleMap[path]}}\n`;
       }
       onFirstEntry = false;
     }
