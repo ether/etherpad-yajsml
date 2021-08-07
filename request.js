@@ -66,120 +66,112 @@ var fs_client = (new function () {
         response.emit('data', STATUS_MESSAGES[response.statusCode])
         response.emit('end');
         return;
-      } else {
-        function head() {
-          fs.lstat(path, function (error, stats) {
-            if (error) {
-              if (error.code == 'ENOENT') {
-                response.statusCode = 404;
-                var parentTries = 2;
-                var statParent = function (path) {
-                  var parentPath = pathutil.dirname(path);
-                  fs.stat(parentPath, function (error, stats) {
-                    if (!error) {
-                      var date = new Date();
-                      var modifiedLast = new Date(stats.mtime);
-                      response.headers['date'] = date.toUTCString();
-                      response.headers['last-modified'] =
-                          modifiedLast.toUTCString();
-                      after_head();
-                    } else if (parentTries > 0 || parentPath == '/') {
-                      parentTries--;
-                      statParent(parentPath);
-                    } else if (error.code == 'ENOENT') {
-                      response.statusCode = 404;
-                    } else {
-                      response.statusCode = 502;
-                      after_head();
-                    }
-                  });
-                };
-                statParent(path);
-              } else if (error.code == 'EACCESS') {
-                response.statusCode = 403;
-                after_head();
-              } else {
-                response.statusCode = 502;
-                after_head();
-              }
-            } else if (stats.isFile()) {
-              var date = new Date();
-              var modifiedLast = new Date(stats.mtime);
-              var modifiedSince = (options.headers || {})['if-modified-since'];
-              modifiedSince = modifiedSince && new Date(modifiedSince);
-
-              response.headers['date'] = date.toUTCString();
-              response.headers['last-modified'] = modifiedLast.toUTCString();
-
-              if (modifiedSince && modifiedLast
-                  && modifiedSince >= modifiedLast) {
-                response.statusCode = 304;
-              } else {
-                response.statusCode = 200;
-              }
-              after_head();
-            } else if (stats.isSymbolicLink()) {
-              var date = new Date();
-              var modifiedLast = new Date(stats.mtime);
-              response.headers['date'] = date.toUTCString();
-              response.headers['last-modified'] = modifiedLast.toUTCString();
-
-              fs.readlink(path, function (error, linkString) {
-                if (!error) {
-                  response.statusCode = 307;
-                  response.headers['location'] = linkString;
-                } else {
-                  response.statusCode = 502;
-                }
-                after_head();
-              });
-            } else {
-              response.statusCode = 404;
-              after_head();
-            }
-          });
-        }
-        function after_head() {
-          if (method == 'HEAD') {
-            callback(response);
-            response.emit('end');
-          } else if (response.statusCode != 200) {
-            if (STATUS_MESSAGES[response.statusCode]) {
-              response.headers['content-type'] = 'text/plain; charset=utf-8';
-            }
-
-            callback(response);
-            if (STATUS_MESSAGES[response.statusCode]) {
-              response.emit('data', STATUS_MESSAGES[response.statusCode]);
-            }
-            response.emit('end');
-          } else {
-            get();
+      }
+      function after_head() {
+        if (method == 'HEAD') {
+          callback(response);
+          response.emit('end');
+        } else if (response.statusCode != 200) {
+          if (STATUS_MESSAGES[response.statusCode]) {
+            response.headers['content-type'] = 'text/plain; charset=utf-8';
           }
-        }
-        function get() {
-          response.statusCode = 200;
-          var type, charset;
-          if (mime) {
-            type = mime.lookup(path);
-            charset = mime.charsets.lookup(type);
-          } else {
-            type = 'application/octet-stream';
-          }
-          response.headers['content-type'] =
-              type + (charset ? '; charset=' + charset : '');
-
-          var stream = fs.createReadStream(path);
-          stream.statusCode = response.statusCode;
-          stream.headers = response.headers;
-          response = stream;
 
           callback(response);
-          stream.resume();
+          if (STATUS_MESSAGES[response.statusCode]) {
+            response.emit('data', STATUS_MESSAGES[response.statusCode]);
+          }
+          response.emit('end');
+        } else {
+          get();
         }
       }
+      function get() {
+        response.statusCode = 200;
+        var type, charset;
+        if (mime) {
+          type = mime.lookup(path);
+          charset = mime.charsets.lookup(type);
+        } else {
+          type = 'application/octet-stream';
+        }
+        response.headers['content-type'] = type + (charset ? '; charset=' + charset : '');
 
-      head();
+        var stream = fs.createReadStream(path);
+        stream.statusCode = response.statusCode;
+        stream.headers = response.headers;
+        response = stream;
+
+        callback(response);
+        stream.resume();
+      }
+      fs.lstat(path, function (error, stats) {
+        if (error) {
+          if (error.code == 'ENOENT') {
+            response.statusCode = 404;
+            var parentTries = 2;
+            var statParent = function (path) {
+              var parentPath = pathutil.dirname(path);
+              fs.stat(parentPath, function (error, stats) {
+                if (!error) {
+                  var date = new Date();
+                  var modifiedLast = new Date(stats.mtime);
+                  response.headers['date'] = date.toUTCString();
+                  response.headers['last-modified'] = modifiedLast.toUTCString();
+                  after_head();
+                } else if (parentTries > 0 || parentPath == '/') {
+                  parentTries--;
+                  statParent(parentPath);
+                } else if (error.code == 'ENOENT') {
+                  response.statusCode = 404;
+                } else {
+                  response.statusCode = 502;
+                  after_head();
+                }
+              });
+            };
+            statParent(path);
+          } else if (error.code == 'EACCESS') {
+            response.statusCode = 403;
+            after_head();
+          } else {
+            response.statusCode = 502;
+            after_head();
+          }
+        } else if (stats.isFile()) {
+          var date = new Date();
+          var modifiedLast = new Date(stats.mtime);
+          var modifiedSince = (options.headers || {})['if-modified-since'];
+          modifiedSince = modifiedSince && new Date(modifiedSince);
+
+          response.headers['date'] = date.toUTCString();
+          response.headers['last-modified'] = modifiedLast.toUTCString();
+
+          if (modifiedSince && modifiedLast && modifiedSince >= modifiedLast) {
+            response.statusCode = 304;
+          } else {
+            response.statusCode = 200;
+          }
+          after_head();
+        } else if (stats.isSymbolicLink()) {
+          var date = new Date();
+          var modifiedLast = new Date(stats.mtime);
+          response.headers['date'] = date.toUTCString();
+          response.headers['last-modified'] = modifiedLast.toUTCString();
+
+          fs.readlink(path, function (error, linkString) {
+            if (!error) {
+              response.statusCode = 307;
+              response.headers['location'] = linkString;
+            } else {
+              response.statusCode = 502;
+            }
+            after_head();
+          });
+        } else {
+          response.statusCode = 404;
+          after_head();
+        }
+      });
     };
     return request;
   }
