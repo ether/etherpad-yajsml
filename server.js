@@ -286,6 +286,7 @@ Server.prototype = new function () {
       });
       response.write("422: Malformed URL");
       response.end();
+      return;
     }
     var url = require('url').parse(request.url, true);
     var path = normalizePath(url.pathname);
