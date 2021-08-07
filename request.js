@@ -65,6 +65,7 @@ var fs_client = (new function () {
         callback(response);
         response.emit('data', STATUS_MESSAGES[response.statusCode])
         response.emit('end');
+        return;
       } else {
         function head() {
           fs.lstat(path, function (error, stats) {
