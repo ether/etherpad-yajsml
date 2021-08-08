@@ -266,14 +266,9 @@ class Server {
           return;
         }
 
-        let modulePaths = [modulePath];
-        let preferredPath = modulePath;
-        if (this._associator) {
-          if (this._associator.preferredPath) {
-            preferredPath = this._associator.preferredPath(preferredPath);
-          }
-          modulePaths = this._associator.associatedModulePaths(modulePath);
-        }
+        const preferredPath = this._associator && this._associator.preferredPath
+          ? this._associator.preferredPath(modulePath)
+          : modulePath;
 
         if (preferredPath !== modulePath) {
           let location;
@@ -300,6 +295,9 @@ class Server {
           return;
         }
 
+        const modulePaths = this._associator
+          ? this._associator.associatedModulePaths(modulePath)
+          : [modulePath];
         const resourceURIs = modulePaths.map((m) => this._resourceURIForModulePath(m));
 
         // TODO: Uh, conditional GET?
