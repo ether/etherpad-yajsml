@@ -23,7 +23,7 @@
 'use strict';
 
 const path = require('path');
-const requestURI = require('./request').requestURI;
+const {requestURI, requestURIs} = require('./request');
 
 const HEADER_WHITELIST =
     ['date', 'last-modified', 'expires', 'cache-control', 'content-type'];
@@ -175,9 +175,7 @@ class Server {
 
     // Some clients insist on transforming values, but cannot run transformation
     // on a separate service. This enables a workaround #hack.
-    if (options.requestURIs) {
-      this._requestURIs = options.requestURIs;
-    }
+    this._requestURIs = options.requestURIs || requestURIs;
   }
 
   _resourceURIForModulePath(path) {
