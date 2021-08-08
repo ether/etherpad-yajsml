@@ -22,6 +22,34 @@
 
 'use strict';
 
+const util = require('util');
+
+// An Alias defines an alternative name that can be passed to `require()` instead of the alias
+// target. This is useful for defining a "main" module of a package, and to allow users to omit
+// `.js` or `/index.js` suffixes.
+//
+// For example:
+//     new Alias('jquery', 'jquery/dist/jquery.min.js')
+// creates an alias that causes:
+//     require('jquery')
+// to be equivalent to:
+//     require('jquery/dist/jquery.min.js')
+// The alias is served to the require kernel in a bundle definition that looks like:
+//     require.define({
+//       'jquery': 'jquery/dist/jquery.min.js',
+//       'jquery/dist/jquery.min.js': function (require, exports, module) { /* module body */ },
+//     });
+class Alias {
+  constructor(alias, target) {
+    this.alias = alias;
+    this.target = target;
+  }
+  [util.inspect.custom](depth, opts) {
+    opts = {...opts, depth: opts.depth == null ? null : opts.depth - 1};
+    return `${util.inspect(this.alias, opts)} -> ${util.inspect(this.target, opts)}`;
+  }
+}
+
 const hasOwnProperty = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 /*
@@ -38,6 +66,7 @@ const hasOwnProperty = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
  *   [ '/module/path/3.js'
  *   , '/module/path/4.js'
  *   , '/module/path/5.js'
+ *   , new Alias('/module', '/module/path/3.js')
  *   ]
  * }
  *
@@ -52,6 +81,7 @@ const hasOwnProperty = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
  *     [ '/module/path/3.js'
  *     , '/module/path/4.js'
  *     , '/module/path/5.js'
+ *     , new Alias('/module', '/module/path/3.js')
  *     ]
  *   }
  * , { '/module/path/1.js': '/module/path/1.js'
@@ -59,22 +89,41 @@ const hasOwnProperty = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
  *   , '/module/path/3.js': '/module/path/4.js'
  *   , '/module/path/4.js': '/module/path/4.js'
  *   , '/module/path/5.js': '/module/path/4.js'
+ *   , '/module': '/module/path/4.js'
  *   }
  * ]
  */
 const associationsForSimpleMapping = (mapping) => {
   const bundleToModules = {};
   const moduleToBundle = {};
+  const indirections = new Map();
   for (const [bundle, modules] of Object.entries(mapping)) {
     if (hasOwnProperty(bundleToModules, bundle)) {
       throw new Error(`bundle ${JSON.stringify(bundle)} already defined`);
     }
     bundleToModules[bundle] = [...modules];
     for (const module of modules) {
-      if (!hasOwnProperty(mapping, module) || module === bundle) {
-        moduleToBundle[module] = bundle;
+      const moduleName = module instanceof Alias ? module.alias : module;
+      const targetName = module instanceof Alias ? module.target : null;
+      if (indirections.has(moduleName) && indirections.get(moduleName) !== targetName) {
+        throw new Error(`conflicting definition of module ${moduleName}`);
+      }
+      indirections.set(moduleName, targetName);
+      if (module instanceof Alias) continue;
+      if (!hasOwnProperty(mapping, moduleName) || moduleName === bundle) {
+        moduleToBundle[moduleName] = bundle;
       }
     }
+  }
+  for (const [moduleName, target] of indirections) {
+    const seen = new Set([moduleName]);
+    let [real, next] = [moduleName, target];
+    while (next != null) {
+      if (seen.has(next)) throw new Error(`alias loop while resolving ${moduleName}`);
+      seen.add(next);
+      [real, next] = [next, indirections.get(next)];
+    }
+    moduleToBundle[moduleName] = hasOwnProperty(moduleToBundle, real) ? moduleToBundle[real] : real;
   }
   return [bundleToModules, moduleToBundle];
 };
@@ -270,6 +319,7 @@ class SimpleAssociator {
   }
 }
 
+exports.Alias = Alias;
 exports.StaticAssociator = StaticAssociator;
 exports.IdentityAssociator = IdentityAssociator;
 exports.SimpleAssociator = SimpleAssociator;

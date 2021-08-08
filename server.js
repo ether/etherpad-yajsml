@@ -22,6 +22,7 @@
 
 'use strict';
 
+const {Alias} = require('./associators');
 const path = require('path');
 const {requestURI, requestURIs} = require('./request');
 
@@ -121,10 +122,11 @@ const mergeHeaders = (...headersList) => {
   return headers;
 };
 
-const packagedDefine = (JSONPCallback, moduleMap) => {
+const packagedDefine = (JSONPCallback, moduleMap, aliases) => {
+  const esc = (s) => escapeNonAlphanumerics(s, './-_');
   let content = `${JSONPCallback}({`;
   for (const [path, body] of Object.entries(moduleMap)) {
-    const pathEsc = escapeNonAlphanumerics(path, './-_');
+    const pathEsc = esc(path);
     content += `"${pathEsc}": `;
     if (body === null) { // eslint-disable-line eqeqeq
       content += 'null';
@@ -154,6 +156,10 @@ const packagedDefine = (JSONPCallback, moduleMap) => {
       content += `{${nl}: function (require, exports, module) {${body}}}[${nl}]`;
     }
     content += ',\n';
+  }
+  for (const {alias, target} of aliases) {
+    if (hasOwnProperty(moduleMap, alias)) throw new Error(`${alias} is already defined`);
+    content += `"${esc(alias)}": "${esc(target)}",\n`;
   }
   content += '});\n';
 
@@ -322,10 +328,11 @@ class Server {
           return;
         }
 
-        const modulePaths = this._associator
+        const modules = this._associator
           ? this._associator.associatedModulePaths(modulePath)
           : [modulePath];
-        const resourceURIs = modulePaths.map((m) => this._resourceURIForModulePath(m));
+        const plainModules = modules.filter((m) => !(m instanceof Alias));
+        const resourceURIs = plainModules.map((m) => this._resourceURIForModulePath(m));
 
         // TODO: Uh, conditional GET?
         const [statuss, headerss] = await this._requestURIs(resourceURIs, 'HEAD', requestHeaders);
@@ -350,8 +357,9 @@ class Server {
             // I'll respond with no content
           } else if (request.method === 'GET') {
             const moduleMap = Object.fromEntries(
-                modulePaths.map((m, i) => [m, statuss[i] === 200 ? contents[i] : null]));
-            content = packagedDefine(JSONPCallback, moduleMap);
+                plainModules.map((m, i) => [m, statuss[i] === 200 ? contents[i] : null]));
+            const aliases = modules.filter((m) => m instanceof Alias);
+            content = packagedDefine(JSONPCallback, moduleMap, aliases);
           } else {
             return;
           }
