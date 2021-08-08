@@ -32,16 +32,23 @@ const hasOwnProperty = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
 const relativePath = (from, to) => {
   const fromSplit = from.split('/');
+  // Remove the last component from `from`. This is necessary because web URLs don't behave like
+  // filesystem directories: the relative path from '/a/b' to /a/b/c' is 'b/c', not 'c' ('/a/b' is
+  // always considered to be a file named 'b' inside directory '/a').
+  fromSplit.pop();
   const toSplit = to.split('/');
-  let relative;
-  let i = 0;
-  while (fromSplit[i] === toSplit[i]) i++;
-  if (fromSplit.length - i > 1) {
-    relative = '../'.repeat(fromSplit.length - i - 1);
-  } else {
-    relative = ''; // perhaps './'?
+  // Similarly, make sure `to` is always treated as a file (unless it ends with '/'), not a
+  // directory: the relative path from '/a/b/c' to '/a/b' is '../b', not '.', './', or ''.
+  const toFile = toSplit.pop();
+  while (fromSplit.length !== 0 && fromSplit[0] === toSplit[0]) {
+    fromSplit.shift();
+    toSplit.shift();
   }
-  return relative + toSplit.slice(i).join('/');
+  toSplit.push(toFile);
+  const relative = '../'.repeat(fromSplit.length) + toSplit.join('/');
+  // Corner case: If `from` is '/a/b' and `to` is '/a/', then `relative` will be the empty string.
+  // Applying '' to '/a/b' does not result in '/a/', so return './' if `relative` is empty.
+  return relative || './';
 };
 
 const normalizePath = path.posix.normalize;
