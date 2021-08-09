@@ -66,7 +66,7 @@ const associationsForSimpleMapping = (mapping) => {
   const packageModuleMap = {};
   const modulePackageMap = {};
 
-  for (const primaryKey in mapping) {
+  for (const primaryKey of Object.keys(mapping)) {
     if (hasOwnProperty(packageModuleMap, primaryKey)) {
       throw new Error(`A packaging is for the primary key ${
         JSON.stringify(primaryKey)} is already defined.`);
