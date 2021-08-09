@@ -22,6 +22,7 @@
 
 'use strict';
 
+const path = require('path');
 const requestURI = require('./request').requestURI;
 
 const HEADER_WHITELIST =
@@ -45,43 +46,7 @@ const relativePath = (path, rootPath) => {
   return relative + pathSplit.slice(i).join('/');
 };
 
-// Normal `path.normalize` uses backslashes on Windows, so this is a custom
-// implimentation, sigh.
-const normalizePath = (path) => {
-  const pathComponents1 = path.split('/');
-  const pathComponents2 = [];
-
-  let component;
-  for (let i = 0, ii = pathComponents1.length; i < ii; i++) {
-    component = pathComponents1[i];
-    switch (component) {
-      case '':
-        if (i === ii - 1) {
-          pathComponents2.push(component);
-          break;
-        }
-        // Fall through:
-      case '.':
-        if (i === 0) {
-          pathComponents2.push(component);
-        }
-        break;
-      case '..':
-        if (pathComponents2.length > 1 ||
-            (pathComponents2.length === 1 &&
-             pathComponents2[0] !== '' &&
-             pathComponents2[0] !== '.')) {
-          pathComponents2.pop();
-          break;
-        }
-        // Fall through:
-      default:
-        pathComponents2.push(component);
-    }
-  }
-
-  return pathComponents2.join('/');
-};
+const normalizePath = path.posix.normalize;
 
 // OSWASP Guidlines: escape all non alphanumeric characters in ASCII space.
 const escapeNonAlphanumerics = (text, exceptions) => text && text.replace(
