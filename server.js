@@ -255,12 +255,12 @@ class Server {
       const JSONPCallback = url.searchParams.get('callback');
       if (JSONPCallback.length === 0) {
         response.writeHead(400, {'content-type': 'text/plain; charset=utf-8'});
-        response.write('400: The parameter `callback` must be non-empty.');
+        response.write("400: The 'callback' parameter must be non-empty.");
         response.end();
         return;
       } else if (!JSONPCallback.match(JSONP_CALLBACK_EXPRESSION)) {
         response.writeHead(400, {'content-type': 'text/plain; charset=utf-8'});
-        response.write(`400: The parameter \`callback\` must match ${JSONP_CALLBACK_EXPRESSION}.`);
+        response.write(`400: The 'callback' parameter must match ${JSONP_CALLBACK_EXPRESSION}.`);
         response.end();
         return;
       }

@@ -67,8 +67,7 @@ const associationsForSimpleMapping = (mapping) => {
   const moduleToBundle = {};
   for (const [bundle, modules] of Object.entries(mapping)) {
     if (hasOwnProperty(bundleToModules, bundle)) {
-      throw new Error(
-          `A packaging is for the primary key ${JSON.stringify(bundle)} is already defined.`);
+      throw new Error(`bundle ${JSON.stringify(bundle)} already defined`);
     }
     bundleToModules[bundle] = [...modules];
     for (const module of modules) {
