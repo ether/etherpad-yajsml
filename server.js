@@ -151,23 +151,15 @@ class Server {
     if (options.rootURI) {
       this._rootURI = trailingSlash(options.rootURI);
       validateURI(this._rootURI);
-      if (options.rootPath || options.rootPath === '') {
-        this._rootPath = options.rootPath.toString();
-      } else {
-        this._rootPath = 'root';
-      }
-      this._rootPath = leadingSlash(trailingSlash(this._rootPath));
+      const {rootPath = 'root'} = options;
+      this._rootPath = leadingSlash(trailingSlash(rootPath));
     }
 
     if (options.libraryURI) {
       this._libraryURI = trailingSlash(options.libraryURI);
       validateURI(this._rootURI);
-      if (options.libraryPath || options.libraryPath === '') {
-        this._libraryPath = options.libraryPath.toString();
-      } else {
-        this._libraryPath = 'library';
-      }
-      this._libraryPath = leadingSlash(trailingSlash(this._libraryPath));
+      const {libraryPath = 'library'} = options;
+      this._libraryPath = leadingSlash(trailingSlash(libraryPath));
     }
 
     if (this._rootPath && this._libraryPath &&
