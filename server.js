@@ -164,7 +164,7 @@ class Server {
 
     if (options.libraryURI) {
       this._libraryURI = trailingSlash(options.libraryURI);
-      validateURI(this._rootURI);
+      validateURI(this._libraryURI);
       const {libraryPath = 'library'} = options;
       this._libraryPath = leadingSlash(trailingSlash(libraryPath));
     }
