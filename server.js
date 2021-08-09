@@ -175,7 +175,9 @@ class Server {
 
     // Some clients insist on transforming values, but cannot run transformation
     // on a separate service. This enables a workaround #hack.
-    this._requestURIs = options.requestURIs || requestURIs;
+    this._requestURIs = async (...args) => await new Promise((resolve) => {
+      (options.requestURIs || requestURIs)(...args, (...vals) => resolve(vals));
+    });
   }
 
   _resourceURIForModulePath(path) {
@@ -187,52 +189,54 @@ class Server {
   }
 
   handle(request, response, next) {
-    const requestURIs = this._requestURIs; // Hack, see above.
-    let url;
-    try {
-      url = new URL(request.url, 'ignored-scheme:/');
-    } catch (e) {
-      response.writeHead(422, {'content-type': 'text/plain; charset=utf-8'});
-      response.write('422: Malformed URL');
-      response.end();
-      return;
-    }
-    const path = normalizePath(url.pathname);
-
-    let modulePath;
-    if (path.indexOf(this._rootPath) === 0) {
-      modulePath = `/${path.slice(this._rootPath.length)}`;
-    } else if (this._libraryURI && path.indexOf(this._libraryPath) === 0) {
-      modulePath = path.slice(this._libraryPath.length);
-    } else {
-      // Something has gone wrong.
-    }
-
-    const requestHeaders = Object.assign({
-      'user-agent': 'yajsml',
-      'accept': '*/*',
-    }, selectProperties(request.headers, ['if-modified-since', 'cache-control']));
-
-    if (!modulePath) {
-      if (next) {
-        next();
-      } else {
-        response.writeHead(404, {'content-type': 'text/plain; charset=utf-8'});
-        response.write('404: The requested resource could not be found.');
+    (async () => {
+      let url;
+      try {
+        url = new URL(request.url, 'ignored-scheme:/');
+      } catch (e) {
+        response.writeHead(422, {'content-type': 'text/plain; charset=utf-8'});
+        response.write('422: Malformed URL');
         response.end();
+        return;
       }
-    } else if (request.method !== 'HEAD' && request.method !== 'GET') {
-      // I don't know how to do this.
-      response.writeHead(405, {
-        'allow': 'HEAD, GET',
-        'content-type': 'text/plain; charset=utf-8',
-      });
-      response.write('405: Only the HEAD or GET methods are allowed.');
-      response.end();
-    } else if (!url.searchParams.has('callback')) {
-      // I respond with a straight-forward proxy.
-      const resourceURI = this._resourceURIForModulePath(modulePath);
-      requestURI(resourceURI, 'GET', requestHeaders, (status, headers, content) => {
+      const path = normalizePath(url.pathname);
+
+      let modulePath;
+      if (path.indexOf(this._rootPath) === 0) {
+        modulePath = `/${path.slice(this._rootPath.length)}`;
+      } else if (this._libraryURI && path.indexOf(this._libraryPath) === 0) {
+        modulePath = path.slice(this._libraryPath.length);
+      } else {
+        // Something has gone wrong.
+      }
+
+      const requestHeaders = Object.assign({
+        'user-agent': 'yajsml',
+        'accept': '*/*',
+      }, selectProperties(request.headers, ['if-modified-since', 'cache-control']));
+
+      if (!modulePath) {
+        if (next) {
+          next();
+        } else {
+          response.writeHead(404, {'content-type': 'text/plain; charset=utf-8'});
+          response.write('404: The requested resource could not be found.');
+          response.end();
+        }
+      } else if (request.method !== 'HEAD' && request.method !== 'GET') {
+        // I don't know how to do this.
+        response.writeHead(405, {
+          'allow': 'HEAD, GET',
+          'content-type': 'text/plain; charset=utf-8',
+        });
+        response.write('405: Only the HEAD or GET methods are allowed.');
+        response.end();
+      } else if (!url.searchParams.has('callback')) {
+        // I respond with a straight-forward proxy.
+        const resourceURI = this._resourceURIForModulePath(modulePath);
+        let [status, headers, content] = await new Promise((resolve) => {
+          requestURI(resourceURI, 'GET', requestHeaders, (...vals) => resolve(vals));
+        });
         headers = selectProperties(headers, HEADER_WHITELIST);
         if (status === 200) {
           headers['content-type'] = 'application/javascript; charset=utf-8';
@@ -248,74 +252,73 @@ class Server {
         response.writeHead(status, headers);
         if (request.method === 'GET' && content) response.write(content);
         response.end();
-      });
-    } else {
-      const JSONPCallback = url.searchParams.get('callback');
-      if (JSONPCallback.length === 0) {
-        response.writeHead(400, {'content-type': 'text/plain; charset=utf-8'});
-        response.write("400: The 'callback' parameter must be non-empty.");
-        response.end();
-        return;
-      } else if (!JSONPCallback.match(JSONP_CALLBACK_EXPRESSION)) {
-        response.writeHead(400, {'content-type': 'text/plain; charset=utf-8'});
-        response.write(`400: The 'callback' parameter must match ${JSONP_CALLBACK_EXPRESSION}.`);
-        response.end();
-        return;
-      }
-
-      const respond = (status, headers, content) => {
-        headers = selectProperties(headers, HEADER_WHITELIST);
-        headers['content-type'] = 'application/javascript; charset=utf-8';
-        // JSONP requires a guard against incorrect sniffing.
-        headers['x-content-type-options'] = 'nosniff';
-
-        if (status === 304 || notModified(requestHeaders, headers)) {
-          response.writeHead(304, headers);
-        } else {
-          response.writeHead(200, headers);
-          if (request.method === 'GET' && content) response.write(content);
-        }
-        response.end();
-      };
-
-      let modulePaths = [modulePath];
-      let preferredPath = modulePath;
-      if (this._associator) {
-        if (this._associator.preferredPath) {
-          preferredPath = this._associator.preferredPath(preferredPath);
-        }
-        modulePaths = this._associator.associatedModulePaths(modulePath);
-      }
-
-      if (preferredPath !== modulePath) {
-        let location;
-        if (preferredPath.charAt(0) === '/') {
-          location = this._rootPath + preferredPath.slice(1);
-        } else {
-          location = this._libraryPath + preferredPath;
+      } else {
+        const JSONPCallback = url.searchParams.get('callback');
+        if (JSONPCallback.length === 0) {
+          response.writeHead(400, {'content-type': 'text/plain; charset=utf-8'});
+          response.write("400: The 'callback' parameter must be non-empty.");
+          response.end();
+          return;
+        } else if (!JSONPCallback.match(JSONP_CALLBACK_EXPRESSION)) {
+          response.writeHead(400, {'content-type': 'text/plain; charset=utf-8'});
+          response.write(`400: The 'callback' parameter must match ${JSONP_CALLBACK_EXPRESSION}.`);
+          response.end();
+          return;
         }
 
-        if (this._baseURI) { // Full URIs for location are opt-in.
-          location = this._baseURI + location;
-        } else {
-          location = relativePath(path, location);
+        const respond = (status, headers, content) => {
+          headers = selectProperties(headers, HEADER_WHITELIST);
+          headers['content-type'] = 'application/javascript; charset=utf-8';
+          // JSONP requires a guard against incorrect sniffing.
+          headers['x-content-type-options'] = 'nosniff';
+
+          if (status === 304 || notModified(requestHeaders, headers)) {
+            response.writeHead(304, headers);
+          } else {
+            response.writeHead(200, headers);
+            if (request.method === 'GET' && content) response.write(content);
+          }
+          response.end();
+        };
+
+        let modulePaths = [modulePath];
+        let preferredPath = modulePath;
+        if (this._associator) {
+          if (this._associator.preferredPath) {
+            preferredPath = this._associator.preferredPath(preferredPath);
+          }
+          modulePaths = this._associator.associatedModulePaths(modulePath);
         }
-        location += url.search;
 
-        // TODO: Caching headers?
-        response.writeHead(307, {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Location': location,
-        });
-        response.write('307: Resource moved temporarily.');
-        response.end();
-        return;
-      }
+        if (preferredPath !== modulePath) {
+          let location;
+          if (preferredPath.charAt(0) === '/') {
+            location = this._rootPath + preferredPath.slice(1);
+          } else {
+            location = this._libraryPath + preferredPath;
+          }
 
-      const resourceURIs = modulePaths.map((m) => this._resourceURIForModulePath(m));
+          if (this._baseURI) { // Full URIs for location are opt-in.
+            location = this._baseURI + location;
+          } else {
+            location = relativePath(path, location);
+          }
+          location += url.search;
 
-      // TODO: Uh, conditional GET?
-      requestURIs(resourceURIs, 'HEAD', requestHeaders, (statuss, headerss, contents) => {
+          // TODO: Caching headers?
+          response.writeHead(307, {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Location': location,
+          });
+          response.write('307: Resource moved temporarily.');
+          response.end();
+          return;
+        }
+
+        const resourceURIs = modulePaths.map((m) => this._resourceURIForModulePath(m));
+
+        // TODO: Uh, conditional GET?
+        const [statuss, headerss] = await this._requestURIs(resourceURIs, 'HEAD', requestHeaders);
         const status = statuss.reduce((m, s) => m && m === s ? m : undefined);
         const headers = mergeHeaders(...headerss);
         if (status === 304 || notModified(requestHeaders, headers)) {
@@ -329,22 +332,22 @@ class Server {
           // would yield a 304, we need full content for each resource.
           const requestHeadersForGet =
               selectProperties(requestHeaders, ['user-agent', 'accept', 'cache-control']);
-          requestURIs(resourceURIs, 'GET', requestHeadersForGet, (statuss, headerss, contents) => {
-            const status = statuss.reduce((m, s) => m && m === s ? m : undefined);
-            const headers = mergeHeaders(...headerss);
-            const moduleMap = Object.fromEntries(
-                modulePaths.map((m, i) => [m, statuss[i] === 200 ? contents[i] : null]));
-            const content = packagedDefine(JSONPCallback, moduleMap);
-            if (request.method === 'HEAD') {
-              // I'll respond with no content
-              respond(status, headers);
-            } else if (request.method === 'GET') {
-              respond(status, headers, content);
-            }
-          });
+          const [statuss, headerss, contents] =
+              await this._requestURIs(resourceURIs, 'GET', requestHeadersForGet);
+          const status = statuss.reduce((m, s) => m && m === s ? m : undefined);
+          const headers = mergeHeaders(...headerss);
+          const moduleMap = Object.fromEntries(
+              modulePaths.map((m, i) => [m, statuss[i] === 200 ? contents[i] : null]));
+          const content = packagedDefine(JSONPCallback, moduleMap);
+          if (request.method === 'HEAD') {
+            // I'll respond with no content
+            respond(status, headers);
+          } else if (request.method === 'GET') {
+            respond(status, headers, content);
+          }
         }
-      });
-    }
+      }
+    })().catch((err) => next(err || new Error(err)));
   }
 }
 
