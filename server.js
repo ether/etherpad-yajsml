@@ -336,13 +336,13 @@ class Server {
               await this._requestURIs(resourceURIs, 'GET', requestHeadersForGet);
           const status = statuss.reduce((m, s) => m && m === s ? m : undefined);
           const headers = mergeHeaders(...headerss);
-          const moduleMap = Object.fromEntries(
-              modulePaths.map((m, i) => [m, statuss[i] === 200 ? contents[i] : null]));
-          const content = packagedDefine(JSONPCallback, moduleMap);
           if (request.method === 'HEAD') {
             // I'll respond with no content
             respond(status, headers);
           } else if (request.method === 'GET') {
+            const moduleMap = Object.fromEntries(
+                modulePaths.map((m, i) => [m, statuss[i] === 200 ? contents[i] : null]));
+            const content = packagedDefine(JSONPCallback, moduleMap);
             respond(status, headers, content);
           }
         }
