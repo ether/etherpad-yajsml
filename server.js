@@ -30,20 +30,18 @@ const HEADER_WHITELIST =
 
 const hasOwnProperty = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
-const relativePath = (path, rootPath) => {
-  const pathSplit = path.split('/');
-  const rootSplit = rootPath.split('/');
+const relativePath = (from, to) => {
+  const fromSplit = from.split('/');
+  const toSplit = to.split('/');
   let relative;
   let i = 0;
-  while (pathSplit[i] === rootSplit[i]) {
-    i++;
-  }
-  if (i < rootSplit.length - 1) {
-    relative = (new Array(rootSplit.length - i)).join('../');
+  while (fromSplit[i] === toSplit[i]) i++;
+  if (fromSplit.length - i > 1) {
+    relative = '../'.repeat(fromSplit.length - i - 1);
   } else {
     relative = ''; // perhaps './'?
   }
-  return relative + pathSplit.slice(i).join('/');
+  return relative + toSplit.slice(i).join('/');
 };
 
 const normalizePath = path.posix.normalize;
@@ -61,8 +59,7 @@ const JSONP_CALLBACK_EXPRESSION = /^[a-zA-Z0-9$:._'"\\()[\]{}]+$/;
 
 const selectProperties = (o, keys) => {
   const object = {};
-  for (let i = 0, ii = keys.length; i < ii; i++) {
-    const key = keys[i];
+  for (const key of keys) {
     if (hasOwnProperty(o, key)) {
       object[key] = o[key];
     }
@@ -119,19 +116,17 @@ const mergeHeaders = (...headersList) => {
 
 const packagedDefine = (JSONPCallback, moduleMap) => {
   let content = `${JSONPCallback}({`;
-  for (const path in moduleMap) {
-    if (hasOwnProperty(moduleMap, path)) {
-      content += `"${escapeNonAlphanumerics(path, './-_')}": `;
-      if (moduleMap[path] === null) { // eslint-disable-line eqeqeq
-        content += 'null';
-      } else {
-        // Note: This is a regular function, not an arrow function, so that the require kernel can
-        // set the context (`this` inside the module) to `module.exports` to match Node.js's
-        // behavior.
-        content += `function (require, exports, module) {${moduleMap[path]}}`;
-      }
-      content += ',\n';
+  for (const [path, body] of Object.entries(moduleMap)) {
+    content += `"${escapeNonAlphanumerics(path, './-_')}": `;
+    if (body === null) { // eslint-disable-line eqeqeq
+      content += 'null';
+    } else {
+      // Note: This is a regular function, not an arrow function, so that the require kernel can
+      // set the context (`this` inside the module) to `module.exports` to match Node.js's
+      // behavior.
+      content += `function (require, exports, module) {${body}}`;
     }
+    content += ',\n';
   }
   content += '});\n';
 
@@ -148,83 +143,66 @@ const notModified = (requestHeaders, responseHeaders) => {
 /*
  * I implement a JavaScript module server.
  */
-function Server(options) {
-  const trailingSlash = (path) => {
-    if (path && path.charAt(path.length - 1) !== '/') {
-      return `${path}/`;
-    } else {
-      return path;
+class Server {
+  constructor(options) {
+    const trailingSlash = (path) => path && !path.endsWith('/') ? `${path}/` : path;
+    const leadingSlash = (path) => path && !path.startsWith('/') ? `/${path}` : path;
+
+    if (options.rootURI) {
+      this._rootURI = trailingSlash(options.rootURI);
+      validateURI(this._rootURI);
+      if (options.rootPath || options.rootPath === '') {
+        this._rootPath = options.rootPath.toString();
+      } else {
+        this._rootPath = 'root';
+      }
+      this._rootPath = leadingSlash(trailingSlash(this._rootPath));
     }
-  };
-  const leadingSlash = (path) => {
-    if (path && path.charAt(0) !== '/') {
-      return `/${path}`;
-    } else {
-      return path;
+
+    if (options.libraryURI) {
+      this._libraryURI = trailingSlash(options.libraryURI);
+      validateURI(this._rootURI);
+      if (options.libraryPath || options.libraryPath === '') {
+        this._libraryPath = options.libraryPath.toString();
+      } else {
+        this._libraryPath = 'library';
+      }
+      this._libraryPath = leadingSlash(trailingSlash(this._libraryPath));
     }
-  };
 
-  if (options.rootURI) {
-    this._rootURI = trailingSlash(options.rootURI);
-    validateURI(this._rootURI);
-    if (options.rootPath || options.rootPath === '') {
-      this._rootPath = options.rootPath.toString();
-    } else {
-      this._rootPath = 'root';
+    if (this._rootPath && this._libraryPath &&
+        (this._rootPath.indexOf(this._libraryPath) === 0 ||
+         this._libraryPath.indexOf(this._rootPath) === 0)) {
+      throw new Error(`The paths ${JSON.stringify(this._rootPath)} and ` +
+                      `${JSON.stringify(this._libraryPath)} are ambiguous.`);
     }
-    this._rootPath = leadingSlash(trailingSlash(this._rootPath));
-  }
 
-  if (options.libraryURI) {
-    this._libraryURI = trailingSlash(options.libraryURI);
-    validateURI(this._rootURI);
-    if (options.libraryPath || options.libraryPath === '') {
-      this._libraryPath = options.libraryPath.toString();
-    } else {
-      this._libraryPath = 'library';
+    if (options.baseURI) {
+      this._baseURI = trailingSlash(options.baseURI);
     }
-    this._libraryPath = leadingSlash(trailingSlash(this._libraryPath));
-  }
 
-  if (this._rootPath && this._libraryPath &&
-      (this._rootPath.indexOf(this._libraryPath) === 0 ||
-       this._libraryPath.indexOf(this._rootPath) === 0)) {
-    throw new Error(`The paths ${JSON.stringify(this._rootPath)} and ` +
-                    `${JSON.stringify(this._libraryPath)} are ambiguous.`);
-  }
-
-  if (options.baseURI) {
-    this._baseURI = trailingSlash(options.baseURI);
-  }
-
-  // Some clients insist on transforming values, but cannot run transformation
-  // on a separate service. This enables a workaround #hack.
-  if (options.requestURIs) {
-    this._requestURIs = options.requestURIs;
-  }
-}
-Server.prototype = new function () {
-  function _resourceURIForModulePath(path) {
-    if (path.charAt(0) === '/') {
-      return this._rootURI + path.slice(1);
-    } else {
-      return this._libraryURI + path;
+    // Some clients insist on transforming values, but cannot run transformation
+    // on a separate service. This enables a workaround #hack.
+    if (options.requestURIs) {
+      this._requestURIs = options.requestURIs;
     }
   }
 
-  function setAssociator(associator) {
+  _resourceURIForModulePath(path) {
+    return path.startsWith('/') ? this._rootURI + path.slice(1) : this._libraryURI + path;
+  }
+
+  setAssociator(associator) {
     this._associator = associator;
   }
 
-  function handle(request, response, next) {
+  handle(request, response, next) {
     const requestURIs = this._requestURIs; // Hack, see above.
     let url;
     try {
       url = new URL(request.url, 'ignored-scheme:/');
     } catch (e) {
-      response.writeHead(422, {
-        'content-type': 'text/plain; charset=utf-8',
-      });
+      response.writeHead(422, {'content-type': 'text/plain; charset=utf-8'});
       response.write('422: Malformed URL');
       response.end();
       return;
@@ -249,9 +227,7 @@ Server.prototype = new function () {
       if (next) {
         next();
       } else {
-        response.writeHead(404, {
-          'content-type': 'text/plain; charset=utf-8',
-        });
+        response.writeHead(404, {'content-type': 'text/plain; charset=utf-8'});
         response.write('404: The requested resource could not be found.');
         response.end();
       }
@@ -266,62 +242,48 @@ Server.prototype = new function () {
     } else if (!url.searchParams.has('callback')) {
       // I respond with a straight-forward proxy.
       const resourceURI = this._resourceURIForModulePath(modulePath);
-      requestURI(resourceURI, 'GET', requestHeaders,
-          (status, headers, content) => {
-            const responseHeaders = selectProperties(headers, HEADER_WHITELIST);
-            if (status === 200) {
-              responseHeaders['content-type'] =
-                'application/javascript; charset=utf-8';
-            } else if (status === 404) {
-              responseHeaders['content-type'] = 'text/plain; charset=utf-8';
-              content = '404: The requested resource could not be found.';
-            } else {
-              if (notModified(requestHeaders, responseHeaders)) {
-                status = 304;
-              }
-              // Don't bother giving useful stuff in these cases.
-              delete responseHeaders['content-type'];
-              content = undefined;
-            }
-            response.writeHead(status, responseHeaders);
-            if (request.method === 'GET') {
-              content && response.write(content);
-            }
-            response.end();
-          }
-      );
+      requestURI(resourceURI, 'GET', requestHeaders, (status, headers, content) => {
+        headers = selectProperties(headers, HEADER_WHITELIST);
+        if (status === 200) {
+          headers['content-type'] = 'application/javascript; charset=utf-8';
+        } else if (status === 404) {
+          headers['content-type'] = 'text/plain; charset=utf-8';
+          content = '404: The requested resource could not be found.';
+        } else {
+          if (notModified(requestHeaders, headers)) status = 304;
+          // Don't bother giving useful stuff in these cases.
+          delete headers['content-type'];
+          content = undefined;
+        }
+        response.writeHead(status, headers);
+        if (request.method === 'GET' && content) response.write(content);
+        response.end();
+      });
     } else {
       const JSONPCallback = url.searchParams.get('callback');
       if (JSONPCallback.length === 0) {
-        response.writeHead(400, {
-          'content-type': 'text/plain; charset=utf-8',
-        });
+        response.writeHead(400, {'content-type': 'text/plain; charset=utf-8'});
         response.write('400: The parameter `callback` must be non-empty.');
         response.end();
         return;
       } else if (!JSONPCallback.match(JSONP_CALLBACK_EXPRESSION)) {
-        response.writeHead(400, {
-          'content-type': 'text/plain; charset=utf-8',
-        });
+        response.writeHead(400, {'content-type': 'text/plain; charset=utf-8'});
         response.write(`400: The parameter \`callback\` must match ${JSONP_CALLBACK_EXPRESSION}.`);
         response.end();
         return;
       }
 
       const respond = (status, headers, content) => {
-        const responseHeaders = selectProperties(headers, HEADER_WHITELIST);
-        responseHeaders['content-type'] =
-            'application/javascript; charset=utf-8';
+        headers = selectProperties(headers, HEADER_WHITELIST);
+        headers['content-type'] = 'application/javascript; charset=utf-8';
         // JSONP requires a guard against incorrect sniffing.
-        responseHeaders['x-content-type-options'] = 'nosniff';
+        headers['x-content-type-options'] = 'nosniff';
 
-        if (status === 304 || notModified(requestHeaders, responseHeaders)) {
-          response.writeHead(304, responseHeaders);
+        if (status === 304 || notModified(requestHeaders, headers)) {
+          response.writeHead(304, headers);
         } else {
-          response.writeHead(200, responseHeaders);
-          if (request.method === 'GET') {
-            content && response.write(content);
-          }
+          response.writeHead(200, headers);
+          if (request.method === 'GET' && content) response.write(content);
         }
         response.end();
       };
@@ -346,7 +308,7 @@ Server.prototype = new function () {
         if (this._baseURI) { // Full URIs for location are opt-in.
           location = this._baseURI + location;
         } else {
-          location = relativePath(location, path.split('/').join('/'));
+          location = relativePath(path, location);
         }
         location += url.search;
 
@@ -360,9 +322,7 @@ Server.prototype = new function () {
         return;
       }
 
-      const self = this;
-      const resourceURIs =
-          modulePaths.map((modulePath) => self._resourceURIForModulePath(modulePath));
+      const resourceURIs = modulePaths.map((m) => this._resourceURIForModulePath(m));
 
       // TODO: Uh, conditional GET?
       requestURIs(resourceURIs, 'HEAD', requestHeaders, (statuss, headerss, contents) => {
@@ -382,10 +342,8 @@ Server.prototype = new function () {
           requestURIs(resourceURIs, 'GET', requestHeadersForGet, (statuss, headerss, contents) => {
             const status = statuss.reduce((m, s) => m && m === s ? m : undefined);
             const headers = mergeHeaders(...headerss);
-            const moduleMap = {};
-            for (let i = 0, ii = contents.length; i < ii; i++) {
-              moduleMap[modulePaths[i]] = statuss[i] === 200 ? contents[i] : null;
-            }
+            const moduleMap = Object.fromEntries(
+                modulePaths.map((m, i) => [m, statuss[i] === 200 ? contents[i] : null]));
             const content = packagedDefine(JSONPCallback, moduleMap);
             if (request.method === 'HEAD') {
               // I'll respond with no content
@@ -398,10 +356,6 @@ Server.prototype = new function () {
       });
     }
   }
-
-  this._resourceURIForModulePath = _resourceURIForModulePath;
-  this.setAssociator = setAssociator;
-  this.handle = handle;
-}();
+}
 
 exports.Server = Server;

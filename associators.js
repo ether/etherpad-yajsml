@@ -63,25 +63,21 @@ const hasOwnProperty = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
  * ]
  */
 const associationsForSimpleMapping = (mapping) => {
-  const packageModuleMap = {};
-  const modulePackageMap = {};
-
-  for (const primaryKey of Object.keys(mapping)) {
-    if (hasOwnProperty(packageModuleMap, primaryKey)) {
-      throw new Error(`A packaging is for the primary key ${
-        JSON.stringify(primaryKey)} is already defined.`);
-    } else {
-      const modules = mapping[primaryKey].concat([]);
-      packageModuleMap[primaryKey] = modules;
-      modules.forEach((key) => {
-        // Don't overwrite in this case.
-        if (!hasOwnProperty(mapping, key) || key === primaryKey) {
-          modulePackageMap[key] = primaryKey;
-        }
-      });
+  const bundleToModules = {};
+  const moduleToBundle = {};
+  for (const [bundle, modules] of Object.entries(mapping)) {
+    if (hasOwnProperty(bundleToModules, bundle)) {
+      throw new Error(
+          `A packaging is for the primary key ${JSON.stringify(bundle)} is already defined.`);
+    }
+    bundleToModules[bundle] = [...modules];
+    for (const module of modules) {
+      if (!hasOwnProperty(mapping, module) || module === bundle) {
+        moduleToBundle[module] = bundle;
+      }
     }
   }
-  return [packageModuleMap, modulePackageMap];
+  return [bundleToModules, moduleToBundle];
 };
 
 
@@ -129,13 +125,11 @@ const complexMappingForAssociations = (associations) => {
 
   const blankMapping = packages.map(() => false);
   packages.forEach((pkg, i) => {
-    packageModuleMap[pkg].forEach((key) => {
-      if (!hasOwnProperty(mapping, key)) {
-        mapping[key] = [i, blankMapping.concat([])];
-      }
+    for (const key of packageModuleMap[pkg]) {
+      if (!hasOwnProperty(mapping, key)) mapping[key] = [i, [...blankMapping]];
       mapping[key][0] = i;
       mapping[key][1][i] = true;
-    });
+    }
   });
 
   return [packages, mapping];
