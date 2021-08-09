@@ -59,18 +59,6 @@ const escapeNonAlphanumerics = (text, exceptions) => text && text.replace(
 // look like HTML (e.g. `require.define`, `requireForKey("key").define`).
 const JSONP_CALLBACK_EXPRESSION = /^[a-zA-Z0-9$:._'"\\()[\]{}]+$/;
 
-const mixin = (...objects) => {
-  const object = {};
-  for (const o of objects) {
-    for (const key in o) {
-      if (hasOwnProperty(o, key)) {
-        object[key] = o[key];
-      }
-    }
-  }
-  return object;
-};
-
 const selectProperties = (o, keys) => {
   const object = {};
   for (let i = 0, ii = keys.length; i < ii; i++) {
@@ -252,7 +240,7 @@ Server.prototype = new function () {
       // Something has gone wrong.
     }
 
-    const requestHeaders = mixin({
+    const requestHeaders = Object.assign({
       'user-agent': 'yajsml',
       'accept': '*/*',
     }, selectProperties(request.headers, ['if-modified-since', 'cache-control']));
