@@ -266,21 +266,6 @@ class Server {
           return;
         }
 
-        const respond = (status, headers, content) => {
-          headers = selectProperties(headers, HEADER_WHITELIST);
-          headers['content-type'] = 'application/javascript; charset=utf-8';
-          // JSONP requires a guard against incorrect sniffing.
-          headers['x-content-type-options'] = 'nosniff';
-
-          if (status === 304 || notModified(requestHeaders, headers)) {
-            response.writeHead(304, headers);
-          } else {
-            response.writeHead(200, headers);
-            if (request.method === 'GET' && content) response.write(content);
-          }
-          response.end();
-        };
-
         let modulePaths = [modulePath];
         let preferredPath = modulePath;
         if (this._associator) {
@@ -319,14 +304,14 @@ class Server {
 
         // TODO: Uh, conditional GET?
         const [statuss, headerss] = await this._requestURIs(resourceURIs, 'HEAD', requestHeaders);
-        const status = statuss.reduce((m, s) => m && m === s ? m : undefined);
-        const headers = mergeHeaders(...headerss);
+        let status = statuss.reduce((m, s) => m && m === s ? m : undefined);
+        let headers = mergeHeaders(...headerss);
+        let content = null;
         if (status === 304 || notModified(requestHeaders, headers)) {
-          respond(304, headers);
+          status = 304;
         } else if (request.method === 'HEAD' && status !== 405) {
           // If HEAD wasn't implemented I must GET, else I can guarantee that
           // my response will not be a 304 and will be 200.
-          respond(status, headers);
         } else {
           // HEAD was not helpful, so issue a GET and remove headers that
           // would yield a 304, we need full content for each resource.
@@ -334,18 +319,28 @@ class Server {
               selectProperties(requestHeaders, ['user-agent', 'accept', 'cache-control']);
           const [statuss, headerss, contents] =
               await this._requestURIs(resourceURIs, 'GET', requestHeadersForGet);
-          const status = statuss.reduce((m, s) => m && m === s ? m : undefined);
-          const headers = mergeHeaders(...headerss);
+          status = statuss.reduce((m, s) => m && m === s ? m : undefined);
+          headers = mergeHeaders(...headerss);
           if (request.method === 'HEAD') {
             // I'll respond with no content
-            respond(status, headers);
           } else if (request.method === 'GET') {
             const moduleMap = Object.fromEntries(
                 modulePaths.map((m, i) => [m, statuss[i] === 200 ? contents[i] : null]));
-            const content = packagedDefine(JSONPCallback, moduleMap);
-            respond(status, headers, content);
+            content = packagedDefine(JSONPCallback, moduleMap);
+          } else {
+            return;
           }
         }
+
+        headers = selectProperties(headers, HEADER_WHITELIST);
+        headers['content-type'] = 'application/javascript; charset=utf-8';
+        // JSONP requires a guard against incorrect sniffing.
+        headers['x-content-type-options'] = 'nosniff';
+
+        status = status === 304 || notModified(requestHeaders, headers) ? 304 : 200;
+        response.writeHead(status, headers);
+        if (content) response.write(content);
+        response.end();
       }
     })().catch((err) => next(err || new Error(err)));
   }
